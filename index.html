@@ -1,0 +1,1539 @@
+﻿<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+/* 统一所有评分表的列比例，覆盖导出文件中的零散内联宽度。 */
+.page-body > table.simple-table {
+  width: 100% !important;
+  table-layout: fixed;
+}
+.page-body > table.simple-table th:nth-child(1),
+.page-body > table.simple-table td:nth-child(1) { width: 20% !important; }
+.page-body > table.simple-table th:nth-child(2),
+.page-body > table.simple-table td:nth-child(2) { width: 18% !important; }
+.page-body > table.simple-table th:nth-child(3),
+.page-body > table.simple-table td:nth-child(3) { width: 50% !important; }
+.page-body > table.simple-table th:nth-child(4),
+.page-body > table.simple-table td:nth-child(4) { width: 6% !important; }
+.page-body > table.simple-table th:nth-child(5),
+.page-body > table.simple-table td:nth-child(5) { width: 6% !important; }
+.page-body > table.simple-table th,
+.page-body > table.simple-table td { overflow-wrap: anywhere; }
+.table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 1rem 0; }
+.table-scroll > table { margin: 0; }
+@media (max-width: 720px) {
+  body { margin: 0; max-width: none; font-size: 16px; line-height: 1.65; }
+  article.page { padding: 20px 16px 72px; }
+  .page-title { font-size: 2rem; }
+  h1 { font-size: 1.55rem; } h2 { font-size: 1.25rem; } h3 { font-size: 1.1rem; }
+  .page-body > .table-scroll > table.simple-table { min-width: 720px; font-size: 14px; }
+  .page-body > .table-scroll > table.simple-table th,
+  .page-body > .table-scroll > table.simple-table td { padding: .55em .65em; }
+  .annotation-panel { left: auto; right: 8px; width: min(270px, calc(100vw - 24px)); }
+  .annotation-list, .annotation-card { width: 260px; }
+}
+</style>
+
+<style>.annotation-mark{background:#ffe58f;border-bottom:2px solid #d4a017;cursor:pointer}.annotation-add{position:fixed;z-index:10002;display:none;border:0;border-radius:99px;background:#222;color:#fff;padding:9px 14px}.annotation-panel{position:absolute;z-index:10000;left:calc(50% + 470px);top:0;width:280px;height:100%;overflow:visible;border:0;background:transparent;font:14px/1.5 sans-serif;white-space:normal}.annotation-panel summary{display:none}.annotation-list{position:relative;width:280px;height:100%}.annotation-card{position:absolute;left:0;width:280px;padding:11px 12px;background:#fff;border:1px solid #ddd;border-left:3px solid #e5bd45;border-radius:8px;box-shadow:0 3px 12px #0002;transition:top .18s ease}.annotation-quote,.annotation-meta{color:#777;font-size:12px}.annotation-dialog{border:0;border-radius:14px;width:min(440px,calc(100vw - 32px));padding:20px;box-shadow:0 18px 60px #0004;font:14px sans-serif}.annotation-dialog::backdrop{background:#0005}.annotation-dialog label{display:block;margin-top:10px}.annotation-dialog input,.annotation-dialog textarea{width:100%;margin-top:5px;padding:9px;border:1px solid #ccc;border-radius:8px}.annotation-dialog textarea{min-height:100px}.annotation-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.annotation-actions button{padding:8px 13px}.annotation-actions .primary{background:#222;color:#fff}@media(max-width:1250px){.annotation-panel{position:absolute;left:auto;right:12px}.annotation-card{width:260px;background:#fffffff2}.annotation-list{width:260px}}@media print{.annotation-panel,.annotation-add,.annotation-dialog{display:none!important}}</style>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>作品分类与定义</title><style>
+/* cspell:disable-file */
+/* webkit printing magic: print all background colors */
+html {
+	-webkit-print-color-adjust: exact;
+}
+* {
+	box-sizing: border-box;
+	-webkit-print-color-adjust: exact;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+}
+@media only screen {
+	body {
+		margin: 2em auto;
+		max-width: 900px;
+		color: rgb(55, 53, 47);
+	}
+}
+
+body {
+	line-height: 1.5;
+	white-space: pre-wrap;
+}
+
+a,
+a.visited {
+	color: inherit;
+	text-decoration: underline;
+}
+
+.pdf-relative-link-path {
+	font-size: 80%;
+	color: #444;
+}
+
+h1,
+h2,
+h3 {
+	letter-spacing: -0.01em;
+	line-height: 1.2;
+	font-weight: 600;
+	margin-bottom: 0;
+}
+
+/* Override strong tags inside headings to maintain consistent weight */
+h1 strong,
+h2 strong,
+h3 strong {
+	font-weight: 600;
+}
+
+.page-title {
+	font-size: 2.5rem;
+	font-weight: 700;
+	margin-top: 0;
+	margin-bottom: 0.75em;
+}
+
+h1 {
+	font-size: 1.875rem;
+	margin-top: 1.875rem;
+}
+
+h2 {
+	font-size: 1.5rem;
+	margin-top: 1.5rem;
+}
+
+h3 {
+	font-size: 1.25rem;
+	margin-top: 1.25rem;
+}
+
+.source {
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	padding: 1.5em;
+	word-break: break-all;
+}
+
+.callout {
+	border-radius: 10px;
+	padding: 1rem;
+}
+
+/* For default-background callouts, render the border outline. */
+.callout.block-color-default_background {
+	border: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+figure,
+aside,
+details {
+	margin: 1.25em 0;
+	page-break-inside: avoid;
+}
+
+figcaption {
+	opacity: 0.5;
+	font-size: 85%;
+	margin-top: 0.5em;
+}
+
+mark {
+	background-color: transparent;
+}
+
+.indented {
+	padding-left: 1.5em;
+}
+
+hr {
+	background: transparent;
+	display: block;
+	width: 100%;
+	height: 1px;
+	visibility: visible;
+	border: none;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+img {
+	max-width: 100%;
+}
+
+@media only print {
+	img {
+		max-height: 100vh;
+		object-fit: contain;
+	}
+
+	table.collection-content {
+		width: 100%;
+		table-layout: fixed;
+	}
+
+	table.collection-content th,
+	table.collection-content td {
+		overflow-wrap: anywhere;
+	}
+
+	table.collection-content td > .user,
+	table.collection-content td > time {
+		white-space: pre-wrap;
+	}
+}
+
+@page {
+	margin: 1in;
+}
+
+.collection-content-wrapper {
+	overflow-x: auto;
+}
+
+@media only print {
+	.collection-content-wrapper {
+		overflow-x: visible;
+	}
+}
+
+.collection-content {
+	font-size: 0.875rem;
+}
+
+.collection-content td {
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.column-list {
+	display: flex;
+	gap: 46px;
+}
+
+.column {
+	min-width: 0;
+	overflow: hidden;
+}
+
+.column > *:first-child {
+	margin-top: 0;
+}
+
+.table_of_contents-item {
+	display: block;
+	font-size: 0.875rem;
+	line-height: 1.3;
+	padding-inline: 0.125rem;
+	padding-block: 0.375rem;
+}
+
+.table_of_contents-indent-1 {
+	margin-left: 1.5rem;
+}
+
+.table_of_contents-indent-2 {
+	margin-left: 3rem;
+}
+
+.table_of_contents-indent-3 {
+	margin-left: 4.5rem;
+}
+
+.table_of_contents-link {
+	text-decoration: none;
+	opacity: 0.7;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.18);
+}
+
+table,
+th,
+td {
+	border: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+table {
+	border-collapse: collapse;
+	border-left: none;
+	border-right: none;
+}
+
+th,
+td {
+	font-weight: normal;
+	padding: 0.25em 0.5em;
+	line-height: 1.5;
+	min-height: 1.5em;
+	text-align: left;
+}
+
+th {
+	color: rgba(55, 53, 47, 0.6);
+}
+
+ol,
+ul {
+	margin: 0;
+	margin-block-start: 0.6em;
+	margin-block-end: 0.6em;
+}
+
+li > ol:first-child,
+li > ul:first-child {
+	margin-block-start: 0.6em;
+}
+
+ul > li {
+	list-style: disc;
+}
+
+ul.to-do-list {
+	padding-inline-start: 0;
+}
+
+ul.to-do-list > li {
+	list-style: none;
+}
+
+.to-do-children-checked {
+	text-decoration: line-through;
+	opacity: 0.375;
+}
+
+ul.toggle > li {
+	list-style: none;
+}
+
+ul {
+	padding-inline-start: 1.7em;
+}
+
+ul > li {
+	padding-left: 0.1em;
+}
+
+ol {
+	padding-inline-start: 1.6em;
+}
+
+ol.numbered-list.numbered-list-digits-2 {
+	padding-inline-start: 2em;
+}
+
+ol.numbered-list.numbered-list-digits-3plus {
+	padding-inline-start: 2.4em;
+}
+
+ol > li {
+	padding-left: 0.2em;
+}
+
+.mono ol {
+	padding-inline-start: 2em;
+}
+
+.mono ol > li {
+	text-indent: -0.4em;
+}
+
+.toggle {
+	padding-inline-start: 0em;
+	list-style-type: none;
+}
+
+/* Indent toggle children */
+.toggle > li > details {
+	padding-left: 1.7em;
+}
+
+.toggle > li > details > summary {
+	margin-left: -1.1em;
+}
+
+.selected-value {
+	display: inline-block;
+	padding: 0 0.5em;
+	background: rgba(206, 205, 202, 0.5);
+	border-radius: 3px;
+	margin-right: 0.5em;
+	margin-top: 0.3em;
+	margin-bottom: 0.3em;
+	white-space: nowrap;
+}
+
+.collection-title {
+	display: inline-block;
+	margin-right: 1em;
+}
+
+.page-description {
+	margin-bottom: 2em;
+}
+
+.simple-table {
+	margin-top: 1em;
+	font-size: 0.875rem;
+	empty-cells: show;
+}
+.simple-table td {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table th {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table-header-color {
+	background: rgb(247, 246, 243);
+	color: black;
+}
+.simple-table-header {
+	font-weight: 500;
+}
+
+time {
+	opacity: 0.5;
+}
+
+.icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	max-width: 1.2em;
+	max-height: 1.2em;
+	text-decoration: none;
+	vertical-align: text-bottom;
+	margin-right: 0.5em;
+}
+
+/*
+ * Render emoji icons using a ::before pseudo-element to keep the glyph
+ * out of the DOM textContent traversal. This avoids double-rendering icons
+ * in callouts and page titles.
+ * NOTE(slim/html-export-pseudo-icons): I can't tagref this because it will
+ * flag as a duplicate tag after codegen.
+ */
+.icon[data-emoji]::before {
+	content: attr(data-emoji);
+}
+
+img.icon {
+	border-radius: 3px;
+}
+
+.callout img.notion-static-icon {
+	width: 1em;
+	height: 1em;
+}
+
+.callout p {
+	margin: 0;
+}
+
+.callout h1,
+.callout h2,
+.callout h3 {
+	margin: 0 0 0.6rem;
+}
+
+.user-icon {
+	width: 1.5em;
+	height: 1.5em;
+	border-radius: 100%;
+	margin-right: 0.5rem;
+}
+
+.user-icon-inner {
+	font-size: 0.8em;
+}
+
+.text-icon {
+	border: 1px solid #000;
+	text-align: center;
+}
+
+.page-cover-image {
+	display: block;
+	object-fit: cover;
+	width: 100%;
+	max-height: 30vh;
+}
+
+.page-header-icon {
+	font-size: 3rem;
+	margin-bottom: 1rem;
+}
+
+.page-header-icon-with-cover {
+	margin-top: -0.72em;
+	margin-left: 0.07em;
+}
+
+.page-header-icon img {
+	border-radius: 3px;
+}
+
+.link-to-page {
+	margin: 1em 0;
+	padding: 0;
+	border: none;
+	font-weight: 500;
+}
+
+p > .user {
+	opacity: 0.5;
+}
+
+td > .user,
+td > time {
+	white-space: nowrap;
+}
+
+input[type="checkbox"] {
+	margin-right: 0.4em;
+	vertical-align: middle;
+}
+
+p {
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+}
+
+.image {
+	border: none;
+	margin: 1.5em 0;
+	padding: 0;
+	border-radius: 0;
+	text-align: center;
+}
+
+.code,
+code {
+	background: rgba(135, 131, 120, 0.15);
+	border-radius: 3px;
+	padding: 0.2em 0.4em;
+	border-radius: 3px;
+	font-size: 85%;
+	tab-size: 2;
+}
+
+code {
+	color: #eb5757;
+}
+
+.code {
+	padding: 1.5em 1em;
+}
+
+.code-wrap {
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.code > code {
+	background: none;
+	padding: 0;
+	font-size: 100%;
+	color: inherit;
+}
+
+blockquote {
+	font-size: 1em;
+	margin: 1em 0;
+	padding-left: 1em;
+	border-left: 3px solid rgb(55, 53, 47);
+}
+
+blockquote.quote-large {
+	font-size: 1.25em;
+}
+
+.bookmark {
+	text-decoration: none;
+	max-height: 8em;
+	padding: 0;
+	display: flex;
+	width: 100%;
+	align-items: stretch;
+}
+
+.bookmark-title {
+	font-size: 0.85em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	height: 1.75em;
+	white-space: nowrap;
+}
+
+.bookmark-text {
+	display: flex;
+	flex-direction: column;
+}
+
+.bookmark-info {
+	flex: 4 1 180px;
+	padding: 12px 14px 14px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+
+.bookmark-image {
+	width: 33%;
+	flex: 1 1 180px;
+	display: block;
+	position: relative;
+	object-fit: cover;
+	border-radius: 1px;
+}
+
+.bookmark-description {
+	color: rgba(55, 53, 47, 0.6);
+	font-size: 0.75em;
+	overflow: hidden;
+	max-height: 4.5em;
+	word-break: break-word;
+}
+
+.bookmark-href {
+	font-size: 0.75em;
+	margin-top: 0.25em;
+}
+
+.tab {
+	margin: 1.25em 0;
+	padding-inline: 1rem;
+	border: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+.sans { font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"; }
+.code { font-family: "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace; }
+.serif { font-family: Lyon-Text, Georgia, ui-serif, serif; }
+.mono { font-family: iawriter-mono, Nitti, Menlo, Courier, monospace; }
+.pdf .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK JP'; }
+.pdf:lang(zh-CN) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK SC'; }
+.pdf:lang(zh-TW) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK TC'; }
+.pdf:lang(ko-KR) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK KR'; }
+.pdf .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.pdf .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK JP'; }
+.pdf:lang(zh-CN) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK SC'; }
+.pdf:lang(zh-TW) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK TC'; }
+.pdf:lang(ko-KR) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK KR'; }
+.pdf .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.highlight-default {
+	color: rgba(44, 44, 43, 1);
+}
+.highlight-gray {
+	color: rgba(125, 122, 117, 1);
+	fill: rgba(125, 122, 117, 1);
+}
+.highlight-brown {
+	color: rgba(159, 118, 90, 1);
+	fill: rgba(159, 118, 90, 1);
+}
+.highlight-orange {
+	color: rgba(210, 123, 45, 1);
+	fill: rgba(210, 123, 45, 1);
+}
+.highlight-yellow {
+	color: rgba(203, 148, 52, 1);
+	fill: rgba(203, 148, 52, 1);
+}
+.highlight-teal {
+	color: rgba(80, 148, 110, 1);
+	fill: rgba(80, 148, 110, 1);
+}
+.highlight-blue {
+	color: rgba(56, 125, 201, 1);
+	fill: rgba(56, 125, 201, 1);
+}
+.highlight-purple {
+	color: rgba(154, 107, 180, 1);
+	fill: rgba(154, 107, 180, 1);
+}
+.highlight-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.highlight-red {
+	color: rgba(207, 81, 72, 1);
+	fill: rgba(207, 81, 72, 1);
+}
+.highlight-default_background {
+	color: rgba(44, 44, 43, 1);
+}
+.highlight-gray_background {
+	background: rgba(42, 28, 0, 0.07);
+}
+.highlight-brown_background {
+	background: rgba(139, 46, 0, 0.086);
+}
+.highlight-orange_background {
+	background: rgba(224, 101, 1, 0.129);
+}
+.highlight-yellow_background {
+	background: rgba(211, 168, 0, 0.137);
+}
+.highlight-teal_background {
+	background: rgba(0, 100, 45, 0.09);
+}
+.highlight-blue_background {
+	background: rgba(0, 124, 215, 0.094);
+}
+.highlight-purple_background {
+	background: rgba(102, 0, 178, 0.078);
+}
+.highlight-pink_background {
+	background: rgba(197, 0, 93, 0.086);
+}
+.highlight-red_background {
+	background: rgba(223, 22, 0, 0.094);
+}
+.block-color-default {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray {
+	color: rgba(125, 122, 117, 1);
+	fill: rgba(125, 122, 117, 1);
+}
+.block-color-brown {
+	color: rgba(159, 118, 90, 1);
+	fill: rgba(159, 118, 90, 1);
+}
+.block-color-orange {
+	color: rgba(210, 123, 45, 1);
+	fill: rgba(210, 123, 45, 1);
+}
+.block-color-yellow {
+	color: rgba(203, 148, 52, 1);
+	fill: rgba(203, 148, 52, 1);
+}
+.block-color-teal {
+	color: rgba(80, 148, 110, 1);
+	fill: rgba(80, 148, 110, 1);
+}
+.block-color-blue {
+	color: rgba(56, 125, 201, 1);
+	fill: rgba(56, 125, 201, 1);
+}
+.block-color-purple {
+	color: rgba(154, 107, 180, 1);
+	fill: rgba(154, 107, 180, 1);
+}
+.block-color-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.block-color-red {
+	color: rgba(207, 81, 72, 1);
+	fill: rgba(207, 81, 72, 1);
+}
+.block-color-default_background {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray_background {
+	background: rgba(240, 239, 237, 1);
+}
+.block-color-brown_background {
+	background: rgba(245, 237, 233, 1);
+}
+.block-color-orange_background {
+	background: rgba(251, 235, 222, 1);
+}
+.block-color-yellow_background {
+	background: rgba(249, 243, 220, 1);
+}
+.block-color-teal_background {
+	background: rgba(232, 241, 236, 1);
+}
+.block-color-blue_background {
+	background: rgba(229, 242, 252, 1);
+}
+.block-color-purple_background {
+	background: rgba(243, 235, 249, 1);
+}
+.block-color-pink_background {
+	background: rgba(250, 233, 241, 1);
+}
+.block-color-red_background {
+	background: rgba(252, 233, 231, 1);
+}
+.select-value-color-default { background-color: rgba(42, 28, 0, 0.07); }
+.select-value-color-gray { background-color: rgba(28, 19, 1, 0.11); }
+.select-value-color-brown { background-color: rgba(127, 51, 0, 0.156); }
+.select-value-color-orange { background-color: rgba(196, 88, 0, 0.203); }
+.select-value-color-yellow { background-color: rgba(209, 156, 0, 0.282); }
+.select-value-color-green { background-color: rgba(0, 96, 38, 0.156); }
+.select-value-color-blue { background-color: rgba(0, 118, 217, 0.203); }
+.select-value-color-purple { background-color: rgba(92, 0, 163, 0.141); }
+.select-value-color-pink { background-color: rgba(183, 0, 78, 0.152); }
+.select-value-color-red { background-color: rgba(206, 24, 0, 0.164); }
+
+.checkbox {
+	display: inline-flex;
+	vertical-align: text-bottom;
+	width: 16;
+	height: 16;
+	background-size: 16px;
+	margin-left: 2px;
+	margin-right: 5px;
+}
+
+.checkbox-on {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%2358A9D7%22%2F%3E%0A%3Cpath%20d%3D%22M6.71429%2012.2852L14%204.9995L12.7143%203.71436L6.71429%209.71378L3.28571%206.2831L2%207.57092L6.71429%2012.2852Z%22%20fill%3D%22white%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+
+.checkbox-off {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2214.5%22%20height%3D%2214.5%22%20fill%3D%22white%22%20stroke%3D%22%2336352F%22%20stroke-width%3D%221.5%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+	
+</style><style>@import url('https://cdn.jsdelivr.net/npm/katex@0.16.25/dist/katex-swap.min.css')</style>
+<style id="responsive-table-widths">
+.table-scroll {
+  width: 100%;
+  overflow: hidden;
+}
+.table-scroll > table.simple-table {
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: fixed;
+}
+.table-scroll > table.simple-table th:nth-child(1),
+.table-scroll > table.simple-table td:nth-child(1) { width: 20% !important; }
+.table-scroll > table.simple-table th:nth-child(2),
+.table-scroll > table.simple-table td:nth-child(2) { width: 20% !important; }
+.table-scroll > table.simple-table th:nth-child(3),
+.table-scroll > table.simple-table td:nth-child(3) { width: 50% !important; }
+.table-scroll > table.simple-table th:nth-child(4),
+.table-scroll > table.simple-table td:nth-child(4) { width: 5% !important; }
+.table-scroll > table.simple-table th:nth-child(5),
+.table-scroll > table.simple-table td:nth-child(5) { width: 5% !important; }
+
+@media (max-width: 720px) {
+  .table-scroll > table.simple-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    font-size: 10.5px;
+  }
+  .table-scroll > table.simple-table th,
+  .table-scroll > table.simple-table td {
+    min-width: 0 !important;
+    padding: 4px 3px;
+    line-height: 1.4;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .table-scroll > table.simple-table th:nth-child(1),
+  .table-scroll > table.simple-table td:nth-child(1) { width: 14% !important; }
+  .table-scroll > table.simple-table th:nth-child(2),
+  .table-scroll > table.simple-table td:nth-child(2) { width: 26% !important; }
+  .table-scroll > table.simple-table th:nth-child(3),
+  .table-scroll > table.simple-table td:nth-child(3) { width: 44% !important; }
+  .table-scroll > table.simple-table th:nth-child(4),
+  .table-scroll > table.simple-table td:nth-child(4) { width: 8% !important; }
+  .table-scroll > table.simple-table th:nth-child(5),
+  .table-scroll > table.simple-table td:nth-child(5) { width: 8% !important; }
+}
+<style id="revision-styles">
+.revision-delete {
+  color: #777777;
+  background-color: #f1f1f1;
+  text-decoration-line: line-through;
+  text-decoration-color: #555555;
+  text-decoration-thickness: 1.5px;
+}
+
+.revision-add {
+  color: #5F5EC2;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  font-style: inherit;
+  line-height: inherit;
+  text-decoration: none;
+  border: none;
+}
+
+/* 被批注高亮后仍保留修订颜色 */
+.revision-delete .annotation-mark {
+  color: #777777 !important;
+}
+
+.revision-add .annotation-mark {
+  color: #5F5EC2 !important;
+}
+</style>
+
+<style id="word-redline-styles">
+.revision-legend { margin: 1rem 0 1.5rem; padding: .75rem 1rem; border: 1px solid #ded7ea; border-radius: 8px; background: #fbf9ff; }
+.revision-deleted { color: #808080; text-decoration: line-through; text-decoration-thickness: 1px; }
+.revision-added { color: #7b2cbf; }
+/* Preserve revision text colour when a shared-comment highlight is applied. */
+.annotation-mark { color: inherit !important; text-decoration-color: currentColor; }
+.revision-deleted .annotation-mark { color: #808080 !important; }
+.revision-added .annotation-mark { color: #7b2cbf !important; }
+/* The updated markup is formatted across lines. Collapse only tag-separating whitespace,
+   matching the original one-line export without touching its text or paragraph nodes. */
+article.page { white-space: normal; }
+</style>
+</head>
+<body>
+<style>.bottom-line{padding:.5em .75em;border:1px solid #d7efdc;border-radius:3px;background:#f5fbf6}</style><style>.page-title-subtitle{display:block;margin-top:.18em;color:rgba(55,53,47,.48);font-size:.42em;font-weight:500;letter-spacing:0;line-height:1.2}</style><article id="nv-classification-20260821" class="page serif"><header><h1 class="page-title" dir="auto" data-comment-block-id="body-0001">作品分类与定义<span class="page-title-subtitle">来自世界开妬者联盟</span></h1>
+<h2 data-comment-block-id="body-0002">女本位</h2>
+<p data-comment-block-id="body-0003"><span class="revision-added"><strong>女本位：</strong></span>本位即主体、中心；女本位即以女为主体、女性中心主义（Gynocentrism）。将女性的经验、视角和利益置于核心地位，构建以女性为<span class="revision-added">唯一性（</span>第一性<span class="revision-added">）</span>的叙事体系。</p>
+<p data-comment-block-id="word-added-0001"><span class="revision-added"><strong>女本位作品：</strong>女即女权，女本位作品即女权立场作品。刻画女性形象，描绘女性故事，女性为作品唯一性（第一性）视角展现。作者立场为rf，女角色为自然女且无正反派概念，只有女角色和虜角色，（如有）男角色则只作炮灰。</span></p>
+<p data-comment-block-id="word-added-0002"><span class="revision-added"><strong>虜定义：</strong>不利女的生理女性即为虜。</span></p>
+<h1 data-comment-block-id="body-0004">女权立场作品</h1>
+<p data-comment-block-id="word-added-0003"><span class="revision-added"><strong>作者立场rf，其作品符合女本位定义且不违反底线可称为女权立场作品。（注：自2026年8月10日起，曾商业化但已拒绝商业化且无后续商业作品的创作者作品，可归入此类。）</strong></span></p>
+<h3 data-comment-block-id="body-0005">姃宣<span class="revision-added">类</span>作品</h3>
+<p data-comment-block-id="body-0006">以宣传、说明、记录女权理念<span class="revision-added">、</span><span class="revision-deleted">／</span>历史<span class="revision-added">、</span><span class="revision-deleted">／</span>理论为目的，故事人物服务于女权政治宣传。<br><span class="revision-added">注:此类作品不由创造者观读者自领标签，作品分类取决于立场，理念符合女权，宣传效果。</span></p>
+<h3 data-comment-block-id="body-0008"><span class="revision-added">媮言类</span><span class="revision-deleted">女权向立场</span>作品</h3>
+<p data-comment-block-id="word-added-0005"><span class="revision-added">以刻画女本位人物形象，塑造女本位人物故事为目的。女权思想通过故事人物自然展现。</span></p>
+<p data-comment-block-id="body-0007">例子：《跑过去的女性》《脱束日记》<span class="revision-added">《晒太阳图》</span></p>
+<p class="bottom-line" data-comment-block-id="body-0015">以上作品的底线要求：<span class="revision-added">作者作品反性缘，反女权商业化，作品无忤女词，女虏比高于2：1，无印象深刻的男角色，性战结局排男排虜。</span><span class="revision-deleted">无（反）性缘，无忤女词，女角色为自然女，无女性正反派概念，只有女角色和虜角色（利女为我方角色即女，不利女为敌方角色即虜），（如有）男角色则只作炮灰；反女权商业化（作品不收费），非2026年3月後的晋江文学城小说。</span></p>
+<p data-comment-block-id="body-0009"><span class="revision-deleted">除女本位人物故事塑造外，文中有更多展现女权思想、探讨女权实践方法的叙述。</span></p>
+<p data-comment-block-id="body-0011"><span class="revision-deleted">后二者仅作举例说明。</span></p>
+<h3 data-comment-block-id="body-0012"><span class="revision-deleted">女本位作品</span></h3>
+<p data-comment-block-id="body-0013"><span class="revision-deleted">作者立场为rf，以书写女性故事，塑造女性人物为主要目的。人物塑造重心在女性，所有故事转折由女性引导，女性为唯一性（第一性）视角文章叙述。（如有）男角色只做炮灰。女男比高于2：1。</span></p>
+<p data-comment-block-id="body-0014"><span class="revision-deleted">例子：《金风浏碧霄》《异世界厨子的修行之道》</span></p>
+<h1 data-comment-block-id="body-0016"><span class="revision-added">非女权立场</span><span class="revision-deleted">女性友好</span>作品</h1>
+<p data-comment-block-id="word-added-0006"><strong><span class="revision-added">未违反此类底线但违反女权立场作品底线的作品统称为非女权立场作品。</span></strong></p>
+<p data-comment-block-id="body-0010">例子：<span class="revision-deleted">《定制陪伴者》</span>《丹妮斯的重生》（作者支持不脱宅<span class="revision-added">，开打赏</span>）《女主对此感到厌烦》（<span class="revision-deleted">作者</span>支持女权商业化）<span class="revision-added">《金风浏碧霄》（游戏收费，作者开打赏）《敢亮血条就杀给你看》（作品收费）《了了》（作品收费）《真公主？不，真君主！》（番茄签约）《让我寄生一下怎么了》（作品收费）</span></p>
+<p class="bottom-line" data-comment-block-id="body-0023">以上作品的底线要求：<span class="revision-added">作者主角无性缘，以生理女性为故事中心，角色塑造重心在女性。女男比高于9：1，无正面男角色，无忤女词。</span><span class="revision-deleted">主角无性缘，主角和主要配角必须为生理女，剧情重心在女性，无忤女词，非2026年3月後的晋江文学城小说。</span></p>
+<h3 data-comment-block-id="body-0017"><span class="revision-deleted">女性群像作品</span></h3>
+<p data-comment-block-id="body-0018"><span class="revision-deleted">以生理女性的群像为故事中心，故事主要围绕女性展开，角色塑造重心在女性。作品（主要角色）女男比高于1：1。</span></p>
+<p data-comment-block-id="body-0019"><span class="revision-deleted">例子：《敢亮血条就杀给你看》《让我寄生一下怎么了》</span></p>
+<h3 data-comment-block-id="body-0020"><span class="revision-deleted">大女主作品</span></h3>
+<p data-comment-block-id="body-0021"><span class="revision-deleted">故事围绕立场和生理性别为女的主角展开，主角是唯一且绝对的故事中心和塑造重心。拥有主体性，主角的一切选择是主动并坚定的。（如满足以上，但有/多男主则是大妻主，扶持./女主忤女/有忤女词则是大虏主。）作品（主要角色）女男比高于1：1。</span></p>
+<p data-comment-block-id="body-0022"><span class="revision-deleted">例子：《扫垃圾》《真公主？不，真君主！》</span></p>
+<h1 data-comment-block-id="body-0024"><span class="revision-added">反女权立场</span><span class="revision-deleted">忤女</span>作品</h1>
+<p data-comment-block-id="word-added-0007"><span class="revision-added"><strong>违反女权立场底线的作品称为反女权立场作品。（注:2026年3月後的晋江文学城小说均属于此类范畴。）</strong></span></p>
+<p data-comment-block-id="word-added-0008"><span class="revision-added">下列标签属于忤女的一种类型，仅解释标签。</span></p>
+<p data-comment-block-id="body-0025"><span class="revision-deleted">（主要角色）女男比低于1：1的作品和其它非女性主角的文章称为忤女作品。</p>
+<p data-comment-block-id="body-0026"><strong><span class="revision-deleted">大妻主</span></strong></p>
+<p data-comment-block-id="body-0028"><strong><span class="revision-deleted">群像</span></strong></p>
+<p data-comment-block-id="body-0030"><strong>大虜主<span class="revision-added">作品</span></strong></p>
+<p data-comment-block-id="word-added-0009"><span class="revision-added">指虜主实力强，但依旧沾性缘、遇男则弱、有忤女词的一类作品。</span></p>
+<p data-comment-block-id="body-0032"><strong>小糯夫<span class="revision-added">作品</span></strong></p>
+<p data-comment-block-id="body-0033">女（虜）尊、女强男弱、女男平等<span class="revision-added">等非要沾男的一类作品。</span></p>
+<p data-comment-block-id="body-0034"><span class="revision-deleted">女</span><span class="revision-added">虜</span>强</p>
+<p data-comment-block-id="body-0035"><span class="revision-added">指作品内女性角色强大但都没有女权意识的一类作品。</span><span class="revision-deleted">一种人设，主要强调女性角色强大。</span></p>
+<p data-comment-block-id="body-0031">例子：《赛博》<span class="revision-added">（忤女词，有男主）</span><br>《砸锅卖铁》（大量忤女词、性别比）<br>《游戏入侵》（有忤女词<span class="revision-added">、性羞辱女角色的鲨冷有高光</span>）<br><span class="revision-added">《扫垃圾》（有感情线）</span><br>《死了吗》（多男主）<br>《黑月光冠冕》（有男主）<br>《公路求生榜一说她要走到公路尽头》（跨性别、讽刺女权）<br><span class="revision-added">《为什么她永无止境》（作者沾性缘）<br>《最终她成为魔尊》（作者看男同文）<br>《漫画女主自救指南》（作者是代号鸢广陵王粉）</span></p>
+<p class="bottom-line" data-comment-block-id="body-0036"><span class="revision-deleted">以上</span><span class="revision-added">此类</span>作品无底线。</p></div></article><span class="sans" style="font-size:14px;padding-top:2em"></span>
+<button id="annotationAdd" class="annotation-add">＋ 添加批注</button><details class="annotation-panel" open><summary>共享批注 <span id="annotationCount">0</span></summary><div id="annotationList" class="annotation-list"></div></details><dialog id="annotationDialog" class="annotation-dialog"><form id="annotationForm"><h3>添加共享批注</h3><div id="annotationSelection" class="annotation-quote"></div>
+<label>你的昵称（可选）<input id="annotationAuthor" maxlength="30" placeholder="留空则显示为匿名"></label><label>批注颜色<select id="annotationColor"><option value="#ffe58f">黄色</option><option value="#b7eb8f">绿色</option><option value="#91d5ff">蓝色</option><option value="#d3adf7">紫色</option><option value="#ffadd2">粉色</option></select></label>
+<label>批注内容<textarea id="annotationText" maxlength="1000" required></textarea></label><div class="annotation-actions"><button type="button" onclick="this.closest('dialog').close()">取消</button><button class="primary" type="submit">发布批注</button></div></form></dialog><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
+(()=>{
+  const article=document.querySelector('article');
+  const add=document.querySelector('#annotationAdd');
+  const dialog=document.querySelector('#annotationDialog');
+  const form=document.querySelector('#annotationForm');
+  const list=document.querySelector('#annotationList');
+  const count=document.querySelector('#annotationCount');
+  const author=document.querySelector('#annotationAuthor');
+  const color=document.querySelector('#annotationColor');
+  const text=document.querySelector('#annotationText');
+  const selected=document.querySelector('#annotationSelection');
+  const sb=window.supabase.createClient('https://nsgiklzuwvfquobkqqsy.supabase.co','sb_publishable_4qHXQE8ZQiMAv7hkod8eIw_AFEvjZjH');
+  const showAdmin=new URLSearchParams(location.search).get('admin')==='1';
+  let pending=null,me=null,isAdmin=false,notes=new Map(),replies=new Map(),expanded=new Set();
+  author.value=localStorage.getItem('annotation-author')||'';
+
+  const admin=document.createElement('button');
+  admin.type='button';
+  admin.textContent='\u7ba1\u7406\u5458\u767b\u5f55';
+  admin.className='annotation-add';
+  Object.assign(admin.style,{display:showAdmin?'block':'none',right:'18px',left:'auto',top:'18px'});
+  document.body.append(admin);
+
+  const migrate=document.createElement('button');
+  migrate.type='button';
+  migrate.className='annotation-add';
+  Object.assign(migrate.style,{display:'none',right:'18px',left:'auto',top:'58px',background:'#555'});
+  document.body.append(migrate);
+
+  const anchorStyle=document.createElement('style');
+  anchorStyle.textContent='.annotation-card.annotation-orphan{border-left-color:#999!important;background:#fafafa}.annotation-card.annotation-orphan .annotation-selected{color:#a34b00}';
+  document.head.append(anchorStyle);
+
+  function textNodes(root){
+    const result=[],walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+    let node;
+    while(node=walker.nextNode())result.push(node);
+    return result;
+  }
+
+  function offsetWithin(root,node,pos){
+    if(node&&node.nodeType===Node.TEXT_NODE){
+      let total=0;
+      for(const current of textNodes(root)){
+        if(current===node)return total+Math.min(pos,current.data.length);
+        total+=current.data.length;
+      }
+    }
+    const range=document.createRange();
+    range.selectNodeContents(root);
+    range.setEnd(node,pos);
+    return range.toString().length;
+  }
+
+  function globalOffset(node,pos){return offsetWithin(article,node,pos)}
+
+  function locate(root,value){
+    let total=0;
+    for(const node of textNodes(root)){
+      const next=total+node.data.length;
+      if(value<=next)return[node,Math.max(0,value-total)];
+      total=next;
+    }
+    return null;
+  }
+
+  function blockFor(node){
+    const element=node?.nodeType===Node.TEXT_NODE?node.parentElement:node;
+    return element?.closest?.('[data-comment-block-id]')||null;
+  }
+
+  function commonSuffix(a,b){
+    let score=0;
+    while(score<a.length&&score<b.length&&a[a.length-1-score]===b[b.length-1-score])score++;
+    return score;
+  }
+
+  function commonPrefix(a,b){
+    let score=0;
+    while(score<a.length&&score<b.length&&a[score]===b[score])score++;
+    return score;
+  }
+
+  function bestMatch(value,quote,savedStart,prefix='',suffix=''){
+    if(!quote)return null;
+    const start=Number(savedStart);
+    if(Number.isFinite(start)&&value.slice(start,start+quote.length)===quote)return{index:start,score:100000};
+    let from=0,best=null;
+    while(from<=value.length){
+      const index=value.indexOf(quote,from);
+      if(index<0)break;
+      const before=value.slice(Math.max(0,index-prefix.length),index);
+      const after=value.slice(index+quote.length,index+quote.length+suffix.length);
+      const proximity=Number.isFinite(start)?Math.max(0,30-Math.abs(index-start)/10):0;
+      const score=commonSuffix(before,prefix)*3+commonPrefix(after,suffix)*3+proximity;
+      if(!best||score>best.score)best={index,score};
+      from=index+Math.max(1,quote.length);
+    }
+    return best;
+  }
+
+  function contextBoundaries(value,context,after){
+    if(!context)return[];
+    const result=[];
+    let from=0;
+    while(from<=value.length&&result.length<100){
+      const index=value.indexOf(context,from);
+      if(index<0)break;
+      result.push(index+(after?context.length:0));
+      from=index+Math.max(1,context.length);
+    }
+    return result;
+  }
+
+  function recoverEditedRange(value,note){
+    const rawStart=Number(note.start_offset),rawEnd=Number(note.end_offset);
+    const savedStart=Math.max(0,Math.min(value.length,Number.isFinite(rawStart)?rawStart:0));
+    const savedEnd=Math.max(savedStart,Math.min(value.length,Number.isFinite(rawEnd)?rawEnd:savedStart));
+    const oldLength=Math.max(1,Number.isFinite(rawEnd-rawStart)?rawEnd-rawStart:0,(note.quote||'').length);
+    const prefix=note.prefix||'',suffix=note.suffix||'';
+    let starts=contextBoundaries(value,prefix,true);
+    let ends=contextBoundaries(value,suffix,false);
+    let prefixMatched=starts.length>0,suffixMatched=ends.length>0;
+
+    // An empty context means that side originally touched the block boundary.
+    if(!prefix){starts=[0];prefixMatched=savedStart===0}
+    if(!suffix){ends=[value.length];suffixMatched=true}
+    if(!starts.length&&!ends.length)return null;
+
+    const candidates=[];
+    if(starts.length&&ends.length){
+      for(const start of starts)for(const end of ends)if(end>start)candidates.push({start,end});
+    }else if(starts.length){
+      for(const start of starts){
+        const end=Math.min(value.length,start+oldLength);
+        if(end>start)candidates.push({start,end});
+      }
+    }else{
+      for(const end of ends){
+        const start=Math.max(0,end-oldLength);
+        if(end>start)candidates.push({start,end});
+      }
+    }
+    if(!candidates.length)return null;
+
+    const confidence=Number(prefixMatched)+Number(suffixMatched);
+    let best=null;
+    for(const candidate of candidates){
+      const length=candidate.end-candidate.start;
+      const penalty=Math.abs(candidate.start-savedStart)*2+Math.abs(candidate.end-savedEnd)+Math.abs(length-oldLength)/4;
+      const score=confidence*100000-penalty;
+      if(!best||score>best.score)best={...candidate,score,confidence};
+    }
+    return best;
+  }
+
+  function boundaryFromContext(value,saved,prefix,suffix,isStart){
+    const numeric=Math.max(0,Math.min(value.length,Number(saved)||0));
+    if(isStart){
+      if(prefix&&value.slice(Math.max(0,numeric-prefix.length),numeric)===prefix)return numeric;
+      if(prefix){const index=value.lastIndexOf(prefix);if(index>=0)return index+prefix.length}
+    }else{
+      if(suffix&&value.slice(numeric,numeric+suffix.length)===suffix)return numeric;
+      if(suffix){const index=value.indexOf(suffix);if(index>=0)return index}
+    }
+    return numeric;
+  }
+
+  function resolveMultiBlock(note){
+    const ids=String(note.block_id||'').split('|');
+    if(ids.length<2)return null;
+    const blocks=[...article.querySelectorAll('[data-comment-block-id]')];
+    const startBlock=article.querySelector('[data-comment-block-id="'+CSS.escape(ids[0])+'"]');
+    const endBlock=article.querySelector('[data-comment-block-id="'+CSS.escape(ids[1])+'"]');
+    const startIndex=blocks.indexOf(startBlock),endIndex=blocks.indexOf(endBlock);
+    if(startIndex<0||endIndex<startIndex)return null;
+    const startValue=startBlock.textContent||'',endValue=endBlock.textContent||'';
+    const startLength=Number(ids[2])||0,endLength=Number(ids[3])||0;
+    let start=boundaryFromContext(startValue,note.start_offset,note.prefix||'','',true);
+    let end=boundaryFromContext(endValue,note.end_offset,'',note.suffix||'',false);
+    const firstPart=startLength?(note.quote||'').slice(0,startLength):'';
+    const lastPart=endLength?(note.quote||'').slice(-endLength):'';
+    if(firstPart&&startValue.slice(start,start+firstPart.length)!==firstPart){
+      const match=bestMatch(startValue,firstPart,start,note.prefix||'','');
+      if(match)start=match.index;
+    }
+    if(lastPart&&endValue.slice(Math.max(0,end-lastPart.length),end)!==lastPart){
+      const match=bestMatch(endValue,lastPart,Math.max(0,end-lastPart.length),'',note.suffix||'');
+      if(match)end=match.index+lastPart.length;
+    }
+    const selectedBlocks=blocks.slice(startIndex,endIndex+1);
+    const parts=selectedBlocks.map((block,index)=>({
+      root:block,
+      start:index===0?start:0,
+      end:index===selectedBlocks.length-1?end:(block.textContent||'').length
+    })).filter(part=>part.end>part.start);
+    const currentQuote=parts.map(part=>(part.root.textContent||'').slice(part.start,part.end)).join('');
+    return parts.length?{parts,currentQuote,recovered:currentQuote!==(note.quote||'')}:null;
+  }
+
+  function resolveAnchor(note){
+    if(Number(note.anchor_version)>=3)return resolveMultiBlock(note);
+    if(Number(note.anchor_version)>=2&&note.block_id){
+      const selector='[data-comment-block-id="'+CSS.escape(note.block_id)+'"]';
+      const original=article.querySelector(selector);
+      if(original){
+        const value=original.textContent||'';
+        const exact=bestMatch(value,note.quote||'',note.start_offset,note.prefix||'',note.suffix||'');
+        if(exact?.score>=100000){
+          const end=exact.index+(note.quote||'').length;
+          return{root:original,start:exact.index,end,score:exact.score+1000,currentQuote:value.slice(exact.index,end),recovered:false};
+        }
+        const recovered=recoverEditedRange(value,note);
+        if(recovered){
+          const currentQuote=value.slice(recovered.start,recovered.end);
+          return{root:original,start:recovered.start,end:recovered.end,score:recovered.score+1000,currentQuote,recovered:currentQuote!==(note.quote||'')};
+        }
+      }
+      const candidates=[];
+      for(const block of article.querySelectorAll('[data-comment-block-id]'))candidates.push(block);
+      let best=null;
+      for(const block of candidates){
+        const value=block.textContent||'';
+        const match=bestMatch(value,note.quote||'',note.start_offset,note.prefix||'',note.suffix||'');
+        if(!match)continue;
+        const score=match.score+(block===original?1000:0);
+        const end=match.index+(note.quote||'').length;
+        if(!best||score>best.score)best={root:block,start:match.index,end,score,currentQuote:value.slice(match.index,end),recovered:false};
+        if(score>=101000)break;
+      }
+      return best;
+    }
+    const start=Number(note.start_offset),end=Number(note.end_offset);
+    if(Number.isFinite(start)&&Number.isFinite(end)&&end>start)return{root:article,start,end,score:0};
+    return null;
+  }
+
+  function clearMarks(){
+    const old=[...article.querySelectorAll('.annotation-mark')];
+    for(let index=old.length-1;index>=0;index--)old[index].replaceWith(...old[index].childNodes);
+    article.normalize();
+  }
+
+  function wrapOffsets(root,start,end,id,note){
+    const segments=[];
+    let position=0;
+    for(const node of textNodes(root)){
+      const from=Math.max(0,start-position);
+      const to=Math.min(node.data.length,end-position);
+      if(from<to)segments.push([node,from,to]);
+      position+=node.data.length;
+    }
+    for(let index=segments.length-1;index>=0;index--){
+      let[node,from,to]=segments[index],part=node;
+      if(to<part.data.length)part.splitText(to);
+      if(from>0)part=part.splitText(from);
+      const mark=document.createElement('mark');
+      mark.className='annotation-mark';
+      mark.dataset.noteId=id;
+      mark.style.backgroundColor=note.color||'#ffe58f';
+      mark.title=(note.author_name||'\u533f\u540d')+'\uff1a'+(note.body||note.quote||'');
+      part.replaceWith(mark);
+      mark.append(part);
+    }
+    return segments.length>0;
+  }
+
+  function paint(){
+    clearMarks();
+    const ordered=[...notes.entries()].sort((a,b)=>Number(b[1].start_offset)-Number(a[1].start_offset));
+    for(const[id,note]of ordered){
+      try{
+        const anchor=resolveAnchor(note);
+        const label=list.querySelector('.annotation-card[data-note-id="'+CSS.escape(id)+'"] .annotation-selected');
+        if(label&&anchor?.currentQuote)label.textContent=anchor.currentQuote;
+        if(anchor?.parts){
+          for(const part of anchor.parts)wrapOffsets(part.root,part.start,part.end,id,note);
+        }else if(anchor){
+          wrapOffsets(anchor.root,anchor.start,anchor.end,id,note);
+        }
+      }catch(error){console.warn('annotation anchor failed',id,error)}
+    }
+  }
+
+  function layout(){
+    const cards=[...list.querySelectorAll('.annotation-card')];
+    const anchored=[],orphaned=[];
+    for(const card of cards){
+      const marker=article.querySelector('[data-note-id="'+CSS.escape(card.dataset.noteId)+'"]');
+      if(marker)anchored.push({card,marker});else orphaned.push(card);
+    }
+    anchored.sort((a,b)=>a.marker.getBoundingClientRect().top-b.marker.getBoundingClientRect().top);
+    let bottom=article.getBoundingClientRect().top+scrollY;
+    for(const item of anchored){
+      item.card.classList.remove('annotation-orphan');
+      const top=Math.max(item.marker.getBoundingClientRect().top+scrollY,bottom);
+      item.card.style.top=top+'px';
+      bottom=top+item.card.offsetHeight+10;
+    }
+    bottom=Math.max(bottom,article.getBoundingClientRect().bottom+scrollY+12);
+    for(const card of orphaned){
+      card.classList.add('annotation-orphan');
+      const note=notes.get(card.dataset.noteId);
+      const label=card.querySelector('.annotation-selected');
+      if(label)label.textContent='\u26a0 \u539f\u6587\u5df2\u4fee\u6539\uff1a'+(note?.quote||'');
+      card.style.top=bottom+'px';
+      bottom+=card.offsetHeight+10;
+    }
+  }
+
+  function button(label,handler){
+    const result=document.createElement('button');
+    result.type='button';result.textContent=label;result.onclick=handler;
+    return result;
+  }
+
+  function currentAuthor(){
+    const value=author.value.trim();
+    if(value)localStorage.setItem('annotation-author',value);
+    return value||'\u533f\u540d';
+  }
+
+  function render(){
+    const ordered=[...notes.entries()].sort((a,b)=>new Date(a[1].created_at)-new Date(b[1].created_at));
+    count.textContent=ordered.length;
+    list.innerHTML='';
+    for(const[id,note]of ordered){
+      const noteReplies=[...replies.values()].filter(reply=>reply.comment_id===id).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+      const card=document.createElement('div');
+      card.className='annotation-card'+(expanded.has(id)?'':' is-collapsed');
+      card.dataset.noteId=id;
+      card.style.borderLeftColor=note.color||'#e5bd45';
+      card.innerHTML='<div class="annotation-quote"><span class="annotation-selected"></span><span class="annotation-preview"></span></div><div></div><div class="annotation-meta"></div><div class="annotation-replies"></div><form class="annotation-reply"><input maxlength="500" placeholder="\u56de\u590d\u2026"><button>\u56de\u590d</button></form>';
+      const quote=card.children[0];
+      quote.dataset.replyCount=noteReplies.length;
+      quote.querySelector('.annotation-selected').textContent=note.quote||'';
+      quote.querySelector('.annotation-preview').textContent=note.body||'\uff08\u65e7\u6279\u6ce8\u672a\u4fdd\u5b58\u5185\u5bb9\uff09';
+      quote.onclick=()=>{
+        card.classList.toggle('is-collapsed');
+        card.classList.contains('is-collapsed')?expanded.delete(id):expanded.add(id);
+        requestAnimationFrame(layout);
+      };
+      card.children[1].textContent=note.body||'\uff08\u65e7\u6279\u6ce8\u672a\u4fdd\u5b58\u5185\u5bb9\uff09';
+      card.children[2].textContent=(note.author_name||'\u533f\u540d')+' \u00b7 '+new Date(note.created_at).toLocaleString();
+
+      for(const reply of noteReplies){
+        const item=document.createElement('div');
+        item.className='annotation-reply-item'+(reply.status==='hidden'?' is-hidden':'');
+        const content=document.createElement('div');
+        content.className='annotation-reply-content';
+        content.textContent=(reply.author_name||'\u533f\u540d')+'\uff1a'+reply.text+(reply.status==='hidden'?'\uff08\u5df2\u9690\u85cf\uff09':'')+' \u00b7 '+new Date(reply.created_at).toLocaleString();
+        item.append(content);
+        if(isAdmin||reply.author_id===me){
+          const controls=document.createElement('div');
+          controls.className='annotation-reply-admin';
+          if(isAdmin)controls.append(button(reply.status==='hidden'?'\u6062\u590d\u56de\u590d':'\u9690\u85cf\u56de\u590d',async()=>{
+            const result=await sb.from('replies').update({status:reply.status==='hidden'?'visible':'hidden'}).eq('id',reply.id);
+            result.error?alert('\u64cd\u4f5c\u5931\u8d25\uff1a'+result.error.message):load(true);
+          }));
+          controls.append(button('\u5220\u9664\u56de\u590d',async()=>{
+            if(!confirm('\u786e\u5b9a\u6c38\u4e45\u5220\u9664\u8fd9\u6761\u56de\u590d\uff1f'))return;
+            const result=await sb.from('replies').delete().eq('id',reply.id);
+            result.error?alert('\u5220\u9664\u5931\u8d25\uff1a'+result.error.message):load(true);
+          }));
+          item.append(controls);
+        }
+        card.children[3].append(item);
+      }
+
+      if(isAdmin||note.author_id===me){
+        if(isAdmin)card.children[2].append(' \u00b7 ',button(note.status==='hidden'?'\u6062\u590d':'\u9690\u85cf',async()=>{
+          const result=await sb.from('comments').update({status:note.status==='hidden'?'visible':'hidden'}).eq('id',id);
+          result.error?alert('\u64cd\u4f5c\u5931\u8d25\uff1a'+result.error.message):load(true);
+        }));
+        card.children[2].append(' \u00b7 ',button('\u5220\u9664',async()=>{
+          if(!confirm('\u786e\u5b9a\u6c38\u4e45\u5220\u9664\u8fd9\u6761\u6279\u6ce8\u53ca\u5176\u56de\u590d\uff1f'))return;
+          const result=await sb.from('comments').delete().eq('id',id);
+          result.error?alert('\u5220\u9664\u5931\u8d25\uff1a'+result.error.message):load(true);
+        }));
+      }
+
+      card.querySelector('form').onsubmit=async event=>{
+        event.preventDefault();
+        const input=event.currentTarget.querySelector('input'),value=input.value.trim();
+        if(!value)return;
+        const result=await sb.from('replies').insert({comment_id:id,author_name:currentAuthor(),text:value});
+        if(result.error){alert('\u56de\u590d\u5931\u8d25\uff1a'+result.error.message);return}
+        input.value='';load(true);
+      };
+      list.append(card);
+    }
+    paint();layout();updateMigrationButton();
+  }
+
+  function isEditing(){
+    const active=document.activeElement;
+    return dialog.open||Boolean(active?.closest?.('.annotation-reply')&&active.value);
+  }
+
+  async function load(force=false){
+    if(!force&&isEditing())return;
+    let query=sb.from('comments').select('*').eq('article_id',article.id).order('created_at');
+    if(!isAdmin)query=query.eq('status','visible');
+    const commentsResult=await query;
+    if(commentsResult.error){console.error(commentsResult.error);return}
+    const repliesResult=await sb.from('replies').select('*').order('created_at');
+    if(!force&&isEditing())return;
+    notes=new Map((commentsResult.data||[]).map(note=>[note.id,note]));
+    replies=new Map((repliesResult.data||[]).filter(reply=>notes.has(reply.comment_id)&&(isAdmin||reply.status==='visible')).map(reply=>[reply.id,reply]));
+    render();
+  }
+
+  function updateMigrationButton(){
+    const total=[...notes.values()].filter(note=>Number(note.anchor_version||1)<2).length;
+    migrate.textContent='\u8fc1\u79fb\u65e7\u6279\u6ce8 ('+total+')';
+    migrate.style.display=isAdmin&&showAdmin&&total?'block':'none';
+  }
+
+  async function migrateLegacy(){
+    if(!isAdmin)return;
+    const legacy=[...notes.values()].filter(note=>Number(note.anchor_version||1)<2);
+    if(!legacy.length){alert('\u6ca1\u6709\u9700\u8981\u8fc1\u79fb\u7684\u65e7\u6279\u6ce8\u3002');return}
+    if(!confirm('\u5c06\u5f00\u59cb\u8fc1\u79fb '+legacy.length+' \u6761\u65e7\u6279\u6ce8\uff0c\u8fc1\u79fb\u524d\u8bf7\u786e\u8ba4\u5df2\u5907\u4efd\u6570\u636e\u3002\u662f\u5426\u7ee7\u7eed\uff1f'))return;
+    clearMarks();
+    let success=0,failed=0;
+    for(const note of legacy){
+      const boundary=locate(article,Number(note.start_offset));
+      const block=boundary?blockFor(boundary[0]):null;
+      const quote=note.quote||'';
+      if(!block||!quote){failed++;continue}
+      const approximate=offsetWithin(block,boundary[0],boundary[1]);
+      const match=bestMatch(block.textContent||'',quote,approximate,'','');
+      if(!match){failed++;continue}
+      const value=block.textContent||'',start=match.index,end=start+quote.length;
+      const result=await sb.from('comments').update({
+        anchor_version:2,
+        block_id:block.dataset.commentBlockId,
+        start_offset:start,
+        end_offset:end,
+        prefix:value.slice(Math.max(0,start-30),start),
+        suffix:value.slice(end,end+30)
+      }).eq('id',note.id);
+      result.error?failed++:success++;
+    }
+    alert('\u8fc1\u79fb\u5b8c\u6210\u3002\u6210\u529f\uff1a'+success+' \u6761\uff1b\u9700\u4eba\u5de5\u68c0\u67e5\uff1a'+failed+' \u6761\u3002');
+    await load(true);
+  }
+
+  async function session(){
+    let current=(await sb.auth.getSession()).data.session;
+    if(!current)current=(await sb.auth.signInAnonymously()).data.session;
+    me=current?.user?.id;
+    const profile=me?await sb.from('profiles').select('role').eq('id',me).maybeSingle():null;
+    isAdmin=profile?.data?.role==='admin';
+    admin.textContent=isAdmin?'\u7ba1\u7406\u5458\u5df2\u767b\u5f55':'\u7ba1\u7406\u5458\u767b\u5f55';
+    await load(true);
+  }
+
+  document.addEventListener('selectionchange',()=>{
+    const selection=getSelection();
+    if(!selection.rangeCount||selection.isCollapsed||!article.contains(selection.anchorNode)||!article.contains(selection.focusNode)){add.style.display='none';return}
+    const range=selection.getRangeAt(0),raw=selection.toString();
+    if(!raw.trim()){add.style.display='none';return}
+    const globalStart=globalOffset(range.startContainer,range.startOffset);
+    const globalEnd=globalOffset(range.endContainer,range.endOffset);
+    const startBlock=blockFor(range.startContainer),endBlock=blockFor(range.endContainer);
+    pending={anchor_version:1,block_id:article.id,start:globalStart,end:globalEnd,quote:raw.trim(),prefix:'',suffix:''};
+    if(startBlock&&startBlock===endBlock){
+      const start=offsetWithin(startBlock,range.startContainer,range.startOffset);
+      const end=offsetWithin(startBlock,range.endContainer,range.endOffset);
+      const value=startBlock.textContent||'';
+      const quote=value.slice(start,end);
+      if(quote)pending={anchor_version:2,block_id:startBlock.dataset.commentBlockId,start,end,quote,prefix:value.slice(Math.max(0,start-30),start),suffix:value.slice(end,end+30)};
+    }else if(startBlock&&endBlock){
+      const blocks=[...article.querySelectorAll('[data-comment-block-id]')];
+      const startIndex=blocks.indexOf(startBlock),endIndex=blocks.indexOf(endBlock);
+      if(startIndex>=0&&endIndex>startIndex){
+        const start=offsetWithin(startBlock,range.startContainer,range.startOffset);
+        const end=offsetWithin(endBlock,range.endContainer,range.endOffset);
+        const selectedBlocks=blocks.slice(startIndex,endIndex+1);
+        const quote=selectedBlocks.map((block,index)=>{
+          const value=block.textContent||'';
+          if(index===0)return value.slice(start);
+          if(index===selectedBlocks.length-1)return value.slice(0,end);
+          return value;
+        }).join('');
+        const startLength=(startBlock.textContent||'').length-start,endLength=end;
+        if(quote)pending={anchor_version:3,block_id:[startBlock.dataset.commentBlockId,endBlock.dataset.commentBlockId,startLength,endLength].join('|'),start,end,quote,prefix:(startBlock.textContent||'').slice(Math.max(0,start-30),start),suffix:(endBlock.textContent||'').slice(end,end+30)};
+      }
+    }
+    const box=range.getBoundingClientRect();
+    add.style.left=Math.max(8,box.left+box.width/2-55)+'px';
+    add.style.top=Math.max(8,box.top-46)+'px';
+    add.style.display='block';
+  });
+
+  add.onclick=()=>{
+    if(!pending)return;
+    selected.textContent='\u201c'+pending.quote+'\u201d';
+    dialog.showModal();add.style.display='none';
+  };
+
+  form.onsubmit=async event=>{
+    event.preventDefault();
+    if(!pending)return;
+    const value=text.value.trim();
+    if(!value)return;
+    const result=await sb.from('comments').insert({
+      article_id:article.id,
+      anchor_version:pending.anchor_version,
+      block_id:pending.block_id,
+      start_offset:pending.start,
+      end_offset:pending.end,
+      quote:pending.quote,
+      body:value,
+      prefix:pending.prefix,
+      suffix:pending.suffix,
+      color:color.value,
+      author_name:currentAuthor()
+    });
+    if(result.error){alert('\u53d1\u5e03\u5931\u8d25\uff1a'+result.error.message);return}
+    dialog.close();text.value='';pending=null;getSelection().removeAllRanges();load(true);
+  };
+
+  article.addEventListener('click',event=>{
+    const mark=event.target.closest('.annotation-mark');
+    if(!mark)return;
+    const id=mark.dataset.noteId,card=list.querySelector('[data-note-id="'+CSS.escape(id)+'"]');
+    if(card){expanded.add(id);card.classList.remove('is-collapsed');requestAnimationFrame(layout)}
+  });
+
+  admin.onclick=async()=>{
+    const email=prompt('\u8f93\u5165\u7ba1\u7406\u5458\u90ae\u7bb1\uff0c\u7cfb\u7edf\u5c06\u53d1\u9001\u767b\u5f55\u94fe\u63a5\uff1a');
+    if(!email)return;
+    const result=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.href}});
+    alert(result.error?'\u53d1\u9001\u5931\u8d25\uff1a'+result.error.message:'\u767b\u5f55\u94fe\u63a5\u5df2\u53d1\u9001\u5230\u90ae\u7bb1');
+  };
+  migrate.onclick=migrateLegacy;
+
+  document.addEventListener('click',event=>{
+    if(event.target.closest?.('.annotation-card,.annotation-mark,#annotationAdd,#annotationDialog')||event.target===admin||event.target===migrate)return;
+    if(!expanded.size)return;
+    expanded.clear();list.querySelectorAll('.annotation-card').forEach(card=>card.classList.add('is-collapsed'));requestAnimationFrame(layout);
+  });
+
+  addEventListener('resize',layout);
+  session();
+  setInterval(()=>load(false),10000);
+})();
+</script>
+<script>
+(()=>{if(new URLSearchParams(location.search).get('admin')==='1')return;const buttons=[...document.querySelectorAll('button')];const adminButton=buttons.find(button=>button.textContent.trim()==='管理员登录'||button.textContent.trim()==='管理员已登录');if(adminButton)adminButton.style.display='none'})();
+</script>
+<style>.annotation-dialog select{width:100%;margin-top:5px;padding:8px;border:1px solid #ccc;border-radius:8px}.annotation-replies{margin-top:8px;border-top:1px solid #eee;padding-top:5px}.annotation-reply-item{font-size:12px;padding:5px 0;border-bottom:1px solid #eee}.annotation-reply-item.is-hidden{color:#999;background:#f5f5f5;border-radius:5px;padding:4px 6px}.annotation-reply-admin{display:flex!important;align-items:center;gap:8px;margin-top:3px}.annotation-reply-admin button{display:inline-block!important;border:0!important;background:none!important;color:#666!important;text-decoration:underline;cursor:pointer;font-size:12px;padding:2px 0!important}.annotation-reply{display:flex;gap:5px;margin-top:8px}.annotation-reply input{min-width:0;flex:1;padding:5px;border:1px solid #ccc;border-radius:5px}.annotation-reply button,.annotation-delete{border:0;background:none;color:#666;text-decoration:underline;cursor:pointer;font-size:12px;padding:2px}</style>
+<style>.annotation-card.is-collapsed{width:auto;max-width:170px;padding:4px 8px;border-radius:999px;box-shadow:0 2px 7px #0002}.annotation-card.is-collapsed .annotation-quote{cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:145px}.annotation-card.is-collapsed>div:not(.annotation-quote),.annotation-card.is-collapsed .annotation-reply{display:none}.annotation-card:not(.is-collapsed) .annotation-quote{cursor:pointer;font-size:12px;margin-bottom:5px}.annotation-card:not(.is-collapsed) .annotation-quote::before{content:'💬 ';}.annotation-card.is-collapsed .annotation-selected{display:none}.annotation-card:not(.is-collapsed) .annotation-preview{display:none}.annotation-preview{color:#555}.annotation-selected{color:#777}</style>
+<script>
+document.querySelectorAll('.page-body > table.simple-table').forEach((table) => {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'table-scroll';
+  table.parentNode.insertBefore(wrapper, table);
+  wrapper.appendChild(table);
+});
+</script>
+<style id="annotation-mobile-behavior">
+.annotation-card .annotation-quote::before {
+  content: '💬 ' attr(data-reply-count) ' · ' !important;
+}
+@media (max-width: 720px) {
+  .annotation-panel { pointer-events: none; }
+  .annotation-card { pointer-events: auto; }
+  .annotation-card.is-collapsed {
+    width: 54px !important;
+    max-width: 54px !important;
+    min-height: 34px;
+    padding: 5px 7px;
+    opacity: .35;
+    border-radius: 999px;
+  }
+  .annotation-card.is-collapsed .annotation-quote {
+    width: 40px;
+    max-width: 40px;
+    font-size: 0;
+    overflow: visible;
+    text-align: center;
+  }
+  .annotation-card.is-collapsed .annotation-quote::before {
+    content: '💬 ' attr(data-reply-count) !important;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .annotation-card:not(.is-collapsed) {
+    width: min(260px, calc(100vw - 28px));
+    max-width: min(260px, calc(100vw - 28px));
+    opacity: 1;
+  }
+}
+</style>
+</body>
+</html>
