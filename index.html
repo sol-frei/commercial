@@ -1525,7 +1525,7 @@ article.page { white-space: normal; }
 
   document.addEventListener('selectionchange',()=>{
     const selection=getSelection();
-    if(!selection.rangeCount||!article.contains(selection.anchorNode)||!article.contains(selection.focusNode)){add.style.display='none';addWord.style.display='none';strikeButton.style.display='none';pending=null;pendingInsert=null;return}
+    if(!selection.rangeCount||!article.contains(selection.anchorNode)||!article.contains(selection.focusNode)){add.style.display='none';addWord.style.display='none';strikeButton.style.display='none';return}
     const range=selection.getRangeAt(0);
     if(selection.isCollapsed){
       add.style.display='none';strikeButton.style.display='none';pending=null;
