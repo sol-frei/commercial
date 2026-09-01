@@ -937,9 +937,11 @@ article.page { white-space: normal; }
 <p class="bottom-line" data-comment-block-id="body-0036"><span class="revision-deleted">以上</span><span class="revision-added">此类</span>作品无底线。</p></div></article><span class="sans" style="font-size:14px;padding-top:2em"></span>
 <button id="annotationAdd" class="annotation-add">＋ 添加批注</button><details class="annotation-panel" open><summary>共享批注 <span id="annotationCount">0</span></summary><div id="annotationList" class="annotation-list"></div></details><dialog id="annotationDialog" class="annotation-dialog"><form id="annotationForm"><h3>添加共享批注</h3><div id="annotationSelection" class="annotation-quote"></div>
 <label>你的昵称（可选）<input id="annotationAuthor" maxlength="30" placeholder="留空则显示为匿名"></label><label>批注颜色<select id="annotationColor"><option value="#ffe58f">黄色</option><option value="#b7eb8f">绿色</option><option value="#91d5ff">蓝色</option><option value="#d3adf7">紫色</option><option value="#ffadd2">粉色</option></select></label>
-<label>批注内容<textarea id="annotationText" maxlength="1000" required></textarea></label><div class="annotation-actions"><button type="button" onclick="this.closest('dialog').close()">取消</button><button class="primary" type="submit">发布批注</button></div></form></dialog><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
+<label>批注内容<textarea id="annotationText" maxlength="1000" required></textarea></label><div class="annotation-actions"><button type="button" onclick="this.closest('dialog').close()">取消</button><button class="primary" type="submit">发布批注</button></div></form></dialog><dialog id="revisionDialog" class="annotation-dialog"><form id="revisionForm"><h3>新增文字（修订）</h3><div class="annotation-quote">将在光标处插入新文字，自动显示为紫色，仅管理员可见此功能。</div><label>新增内容<textarea id="revisionText" maxlength="500" required></textarea></label><div class="annotation-actions"><button type="button" onclick="this.closest('dialog').close()">取消</button><button class="primary" type="submit">插入</button></div></form></dialog><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
 (()=>{
   const article=document.querySelector('article');
+  const originalHTML=new Map();
+  article.querySelectorAll('[data-comment-block-id]').forEach(block=>{originalHTML.set(block.dataset.commentBlockId,block.innerHTML)});
   const add=document.querySelector('#annotationAdd');
   const dialog=document.querySelector('#annotationDialog');
   const form=document.querySelector('#annotationForm');
@@ -951,7 +953,10 @@ article.page { white-space: normal; }
   const selected=document.querySelector('#annotationSelection');
   const sb=window.supabase.createClient('https://iwogjwjzexcnwqyogbhe.supabase.co','sb_publishable_2FPFFSVbit2a9_0tj5eKIw_P8ech8JP');
   const showAdmin=new URLSearchParams(location.search).get('admin')==='1';
-  let pending=null,me=null,isAdmin=false,notes=new Map(),replies=new Map(),expanded=new Set();
+  const revisionDialog=document.querySelector('#revisionDialog');
+  const revisionForm=document.querySelector('#revisionForm');
+  const revisionText=document.querySelector('#revisionText');
+  let pending=null,pendingInsert=null,me=null,isAdmin=false,notes=new Map(),replies=new Map(),revisions=new Map(),expanded=new Set();
   author.value=localStorage.getItem('annotation-author')||'';
 
   const admin=document.createElement('button');
@@ -966,6 +971,18 @@ article.page { white-space: normal; }
   migrate.className='annotation-add';
   Object.assign(migrate.style,{display:'none',right:'18px',left:'auto',top:'58px',background:'#555'});
   document.body.append(migrate);
+
+  const addWord=document.createElement('button');
+  addWord.type='button';
+  addWord.textContent='＋ 添加文字';
+  addWord.className='annotation-add';
+  document.body.append(addWord);
+
+  const strikeButton=document.createElement('button');
+  strikeButton.type='button';
+  strikeButton.textContent='删除线';
+  strikeButton.className='annotation-add';
+  document.body.append(strikeButton);
 
   const anchorStyle=document.createElement('style');
   anchorStyle.textContent='.annotation-card.annotation-orphan{border-left-color:#999!important;background:#fafafa}.annotation-card.annotation-orphan .annotation-selected{color:#a34b00}';
@@ -1222,6 +1239,112 @@ article.page { white-space: normal; }
     }
   }
 
+  function blockIdsFor(note){
+    if(Number(note.anchor_version)>=3){
+      const ids=String(note.block_id||'').split('|');
+      return ids.slice(0,2).filter(Boolean);
+    }
+    return note.block_id?[note.block_id]:[];
+  }
+
+  function wrapRange(root,start,end,makeWrapper){
+    const segments=[];
+    let position=0;
+    for(const node of textNodes(root)){
+      const from=Math.max(0,start-position);
+      const to=Math.min(node.data.length,end-position);
+      if(from<to)segments.push([node,from,to]);
+      position+=node.data.length;
+    }
+    for(let index=segments.length-1;index>=0;index--){
+      let[node,from,to]=segments[index],part=node;
+      if(to<part.data.length)part.splitText(to);
+      if(from>0)part=part.splitText(from);
+      const wrapper=makeWrapper();
+      part.replaceWith(wrapper);
+      wrapper.append(part);
+    }
+    return segments.length>0;
+  }
+
+  function insertAt(root,offset,node){
+    const found=locate(root,offset);
+    if(!found){root.append(node);return}
+    const[textNode,localOffset]=found;
+    if(localOffset<=0){textNode.before(node);return}
+    if(localOffset>=textNode.data.length){textNode.after(node);return}
+    textNode.splitText(localOffset);
+    textNode.after(node);
+  }
+
+  function locateInsertion(note){
+    const block=article.querySelector('[data-comment-block-id="'+CSS.escape(note.block_id)+'"]');
+    if(!block)return null;
+    const value=block.textContent||'';
+    const saved=Math.max(0,Math.min(value.length,Number(note.start_offset)||0));
+    const prefix=note.prefix||'',suffix=note.suffix||'';
+    if((!prefix||value.slice(Math.max(0,saved-prefix.length),saved)===prefix)&&(!suffix||value.slice(saved,saved+suffix.length)===suffix)){
+      return{root:block,offset:saved};
+    }
+    if(prefix){
+      let from=0;
+      while(true){
+        const index=value.indexOf(prefix,from);
+        if(index<0)break;
+        const candidate=index+prefix.length;
+        if(!suffix||value.slice(candidate,candidate+suffix.length)===suffix)return{root:block,offset:candidate};
+        from=index+1;
+      }
+    }
+    if(suffix){
+      const index=value.indexOf(suffix);
+      if(index>=0)return{root:block,offset:index};
+    }
+    return{root:block,offset:saved};
+  }
+
+  function paintRevisions(){
+    article.querySelectorAll('[data-comment-block-id]').forEach(block=>{
+      const id=block.dataset.commentBlockId;
+      if(originalHTML.has(id)&&block.querySelector('[data-revision-id]'))block.innerHTML=originalHTML.get(id);
+    });
+    for(const note of revisions.values()){
+      for(const id of blockIdsFor(note)){
+        const block=article.querySelector('[data-comment-block-id="'+CSS.escape(id)+'"]');
+        if(block&&originalHTML.has(id))block.innerHTML=originalHTML.get(id);
+      }
+    }
+    const deletions=[...revisions.values()].filter(note=>note.type==='deleted').sort((a,b)=>Number(b.start_offset)-Number(a.start_offset));
+    for(const note of deletions){
+      try{
+        const anchor=resolveAnchor(note);
+        if(!anchor)continue;
+        const makeWrapper=()=>{
+          const span=document.createElement('span');
+          span.className='revision-deleted';
+          span.dataset.revisionId=note.id;
+          span.title='已由管理员标记为废弃';
+          return span;
+        };
+        if(anchor.parts){for(const part of anchor.parts)wrapRange(part.root,part.start,part.end,makeWrapper)}
+        else wrapRange(anchor.root,anchor.start,anchor.end,makeWrapper);
+      }catch(error){console.warn('revision(deleted) anchor failed',note.id,error)}
+    }
+    const insertions=[...revisions.values()].filter(note=>note.type==='added').sort((a,b)=>Number(b.start_offset)-Number(a.start_offset));
+    for(const note of insertions){
+      try{
+        const location=locateInsertion(note);
+        if(!location)continue;
+        const span=document.createElement('span');
+        span.className='revision-added';
+        span.dataset.revisionId=note.id;
+        span.title='管理员新增文字';
+        span.textContent=note.text||'';
+        insertAt(location.root,location.offset,span);
+      }catch(error){console.warn('revision(added) anchor failed',note.id,error)}
+    }
+  }
+
   function layout(){
     const cards=[...list.querySelectorAll('.annotation-card')];
     const anchored=[],orphaned=[];
@@ -1329,12 +1452,12 @@ article.page { white-space: normal; }
       };
       list.append(card);
     }
-    paint();layout();updateMigrationButton();
+    paintRevisions();paint();layout();updateMigrationButton();
   }
 
   function isEditing(){
     const active=document.activeElement;
-    return dialog.open||Boolean(active?.closest?.('.annotation-reply')&&active.value);
+    return dialog.open||revisionDialog.open||Boolean(active?.closest?.('.annotation-reply')&&active.value);
   }
 
   async function load(force=false){
@@ -1344,9 +1467,12 @@ article.page { white-space: normal; }
     const commentsResult=await query;
     if(commentsResult.error){console.error(commentsResult.error);return}
     const repliesResult=await sb.from('replies').select('*').order('created_at');
+    const revisionsResult=await sb.from('revisions').select('*').eq('article_id',article.id);
+    if(revisionsResult.error)console.error(revisionsResult.error);
     if(!force&&isEditing())return;
     notes=new Map((commentsResult.data||[]).map(note=>[note.id,note]));
     replies=new Map((repliesResult.data||[]).filter(reply=>notes.has(reply.comment_id)&&(isAdmin||reply.status==='visible')).map(reply=>[reply.id,reply]));
+    revisions=new Map((revisionsResult.data||[]).map(note=>[note.id,note]));
     render();
   }
 
@@ -1392,15 +1518,32 @@ article.page { white-space: normal; }
     me=current?.user?.id;
     const profile=me?await sb.from('profiles').select('role').eq('id',me).maybeSingle():null;
     isAdmin=profile?.data?.role==='admin';
+    document.body.classList.toggle('revision-admin',isAdmin);
     admin.textContent=isAdmin?'\u7ba1\u7406\u5458\u5df2\u767b\u5f55':'\u7ba1\u7406\u5458\u767b\u5f55';
     await load(true);
   }
 
   document.addEventListener('selectionchange',()=>{
     const selection=getSelection();
-    if(!selection.rangeCount||selection.isCollapsed||!article.contains(selection.anchorNode)||!article.contains(selection.focusNode)){add.style.display='none';return}
-    const range=selection.getRangeAt(0),raw=selection.toString();
-    if(!raw.trim()){add.style.display='none';return}
+    if(!selection.rangeCount||!article.contains(selection.anchorNode)||!article.contains(selection.focusNode)){add.style.display='none';addWord.style.display='none';strikeButton.style.display='none';pending=null;pendingInsert=null;return}
+    const range=selection.getRangeAt(0);
+    if(selection.isCollapsed){
+      add.style.display='none';strikeButton.style.display='none';pending=null;
+      if(!isAdmin){addWord.style.display='none';pendingInsert=null;return}
+      const caretBlock=blockFor(range.startContainer);
+      if(!caretBlock){addWord.style.display='none';pendingInsert=null;return}
+      const caretOffset=offsetWithin(caretBlock,range.startContainer,range.startOffset);
+      const caretValue=caretBlock.textContent||'';
+      pendingInsert={block_id:caretBlock.dataset.commentBlockId,offset:caretOffset,prefix:caretValue.slice(Math.max(0,caretOffset-30),caretOffset),suffix:caretValue.slice(caretOffset,caretOffset+30)};
+      const caretBox=range.getBoundingClientRect();
+      addWord.style.left=Math.max(8,caretBox.left-10)+'px';
+      addWord.style.top=Math.max(8,caretBox.top-40)+'px';
+      addWord.style.display='block';
+      return;
+    }
+    addWord.style.display='none';pendingInsert=null;
+    const raw=selection.toString();
+    if(!raw.trim()){add.style.display='none';strikeButton.style.display='none';pending=null;return}
     const globalStart=globalOffset(range.startContainer,range.startOffset);
     const globalEnd=globalOffset(range.endContainer,range.endOffset);
     const startBlock=blockFor(range.startContainer),endBlock=blockFor(range.endContainer);
@@ -1432,12 +1575,65 @@ article.page { white-space: normal; }
     add.style.left=Math.max(8,box.left+box.width/2-55)+'px';
     add.style.top=Math.max(8,box.top-46)+'px';
     add.style.display='block';
+    if(isAdmin&&pending){
+      strikeButton.style.left=Math.max(8,box.left+box.width/2+65)+'px';
+      strikeButton.style.top=add.style.top;
+      strikeButton.style.display='block';
+    }else{
+      strikeButton.style.display='none';
+    }
   });
 
   add.onclick=()=>{
     if(!pending)return;
     selected.textContent='\u201c'+pending.quote+'\u201d';
     dialog.showModal();add.style.display='none';
+  };
+
+  addWord.onclick=()=>{
+    if(!pendingInsert)return;
+    revisionText.value='';
+    revisionDialog.showModal();
+    addWord.style.display='none';
+  };
+
+  revisionForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(!pendingInsert)return;
+    const value=revisionText.value.trim();
+    if(!value)return;
+    const result=await sb.from('revisions').insert({
+      article_id:article.id,
+      type:'added',
+      anchor_version:2,
+      block_id:pendingInsert.block_id,
+      start_offset:pendingInsert.offset,
+      end_offset:pendingInsert.offset,
+      text:value,
+      prefix:pendingInsert.prefix,
+      suffix:pendingInsert.suffix
+    });
+    if(result.error){alert('新增失败：'+result.error.message);return}
+    revisionDialog.close();pendingInsert=null;getSelection().removeAllRanges();load(true);
+  };
+
+  strikeButton.onclick=async()=>{
+    if(!pending||!isAdmin)return;
+    strikeButton.style.display='none';
+    const revisionPayload=pending;
+    const result=await sb.from('revisions').insert({
+      article_id:article.id,
+      type:'deleted',
+      anchor_version:revisionPayload.anchor_version,
+      block_id:revisionPayload.block_id,
+      start_offset:revisionPayload.start,
+      end_offset:revisionPayload.end,
+      quote:revisionPayload.quote,
+      prefix:revisionPayload.prefix,
+      suffix:revisionPayload.suffix
+    });
+    if(result.error){alert('标记失败：'+result.error.message);return}
+    pending=null;getSelection().removeAllRanges();add.style.display='none';load(true);
   };
 
   form.onsubmit=async event=>{
@@ -1467,6 +1663,17 @@ article.page { white-space: normal; }
     if(!mark)return;
     const id=mark.dataset.noteId,card=list.querySelector('[data-note-id="'+CSS.escape(id)+'"]');
     if(card){expanded.add(id);card.classList.remove('is-collapsed');requestAnimationFrame(layout)}
+  });
+
+  article.addEventListener('click',event=>{
+    if(!isAdmin)return;
+    const revisionEl=event.target.closest('[data-revision-id]');
+    if(!revisionEl)return;
+    const id=revisionEl.dataset.revisionId;
+    if(!confirm('撤销这条修订标记吗？'))return;
+    sb.from('revisions').delete().eq('id',id).then(result=>{
+      result.error?alert('撤销失败：'+result.error.message):load(true);
+    });
   });
 
   admin.onclick=async()=>{
@@ -1535,5 +1742,6 @@ document.querySelectorAll('.page-body > table.simple-table').forEach((table) => 
   }
 }
 </style>
+<style>.revision-admin [data-revision-id]{cursor:pointer}.revision-admin [data-revision-id]:hover{outline:1px dashed #999;outline-offset:2px}</style>
 </body>
 </html>
