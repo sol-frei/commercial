@@ -1423,6 +1423,7 @@ article.page { white-space: normal; }
         card.style.transform='translateX(-50%)';
         bottom+=card.offsetHeight+10;
       }
+      enableMobileAnnotationScroll();
       return;
     }
 
@@ -1444,6 +1445,38 @@ article.page { white-space: normal; }
       card.style.top=bottom+'px';
       bottom+=card.offsetHeight+10;
     }
+  }
+
+  // 手机端：批注框内部独立滚动，手指在批注框上滑动时不让正文跟着滚。
+  // 使用 JS 接管 touchmove，可避免某些手机浏览器在 fixed + overflow-y 场景下把手势交给 body。
+  function enableMobileAnnotationScroll(){
+    if(!window.matchMedia('(max-width: 720px)').matches)return;
+    list.querySelectorAll('.annotation-card:not(.is-collapsed)').forEach(card=>{
+      if(card.dataset.touchScrollBound==='1')return;
+      card.dataset.touchScrollBound='1';
+      let lastY=0;
+      let dragging=false;
+      card.addEventListener('touchstart',event=>{
+        if(event.touches.length!==1)return;
+        lastY=event.touches[0].clientY;
+        dragging=true;
+      },{passive:true});
+      card.addEventListener('touchmove',event=>{
+        if(!dragging||event.touches.length!==1)return;
+        const y=event.touches[0].clientY;
+        const dy=lastY-y;
+        lastY=y;
+        if(card.scrollHeight>card.clientHeight+1){
+          card.scrollTop+=dy;
+          event.preventDefault();
+        }else{
+          // 批注内容不足一屏时也拦住手势，避免正文被误滚动。
+          event.preventDefault();
+        }
+      },{passive:false});
+      card.addEventListener('touchend',()=>{dragging=false},{passive:true});
+      card.addEventListener('touchcancel',()=>{dragging=false},{passive:true});
+    });
   }
 
   function button(label,handler){
@@ -1932,8 +1965,13 @@ document.querySelectorAll('.page-body > table.simple-table').forEach((table) => 
     transform: translateX(-50%);
     width: min(300px, calc(100vw - 32px));
     max-width: min(300px, calc(100vw - 32px));
+    height: auto;
     max-height: min(70vh, calc(100vh - 24px));
     overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
     opacity: 1;
     z-index: 10001;
     box-shadow: 0 12px 40px #0005;
