@@ -884,7 +884,8 @@ blockquote.quote-large {
 .revision-legend { margin: 1rem 0 1.5rem; padding: .75rem 1rem; border: 1px solid #ded7ea; border-radius: 8px; background: #fbf9ff; }
 .revision-deleted { color: #808080; text-decoration: line-through; text-decoration-thickness: 1px; }
 .revision-added { color: #7b2cbf; white-space: pre-wrap; }
-.revision-added.revision-struck { color: #808080; text-decoration: line-through; text-decoration-thickness: 1px; }
+.revision-added.revision-struck { color: #808080 !important; text-decoration: line-through !important; text-decoration-thickness: 1px; }
+.revision-added.revision-struck .annotation-mark { color: #808080 !important; }
 /* Preserve revision text colour when a shared-comment highlight is applied. */
 .annotation-mark { color: inherit !important; text-decoration-color: currentColor; }
 .revision-deleted .annotation-mark { color: #808080 !important; }
@@ -992,7 +993,7 @@ article.page { white-space: normal; }
   document.body.append(strikeLineButton);
 
   const anchorStyle=document.createElement('style');
-  anchorStyle.textContent='.annotation-card.annotation-orphan{border-left-color:#999!important;background:#fafafa}.annotation-card.annotation-orphan .annotation-selected{color:#a34b00}.revision-line-block.revision-line-struck{color:#808080;text-decoration:line-through;text-decoration-thickness:1px;background:#f1f1f1;border-left-color:#8888}';
+  anchorStyle.textContent='.annotation-card.annotation-orphan{border-left-color:#999!important;background:#fafafa}.annotation-card.annotation-orphan .annotation-selected{color:#a34b00}.revision-line-block.revision-line-struck{color:#808080!important;text-decoration:line-through!important;text-decoration-thickness:1px;background:#f1f1f1;border-left-color:#8888}';
   document.head.append(anchorStyle);
 
   function textNodes(root){
