@@ -1346,6 +1346,7 @@ article.page { white-space: normal; }
         const span=document.createElement('span');
         span.className='revision-added'+(note.struck?' revision-struck':'');
         span.dataset.revisionId=note.id;
+        span.dataset.commentBlockId='revision-'+note.id;
         span.title='管理员新增文字'+(note.struck?'（已标记删除线）':'');
         span.textContent=note.text||'';
         insertAt(location.root,location.offset,span);
@@ -1370,6 +1371,7 @@ article.page { white-space: normal; }
       const div=document.createElement('div');
       div.className='revision-line-block'+(note.struck?' revision-line-struck':'');
       div.dataset.revisionId=note.id;
+      div.dataset.commentBlockId='revision-'+note.id;
       div.style.fontSize=(note.font_size||16)+'px';
       div.title=(note.author_name||'\u533f\u540d')+' \u65b0\u589e\u7684\u5185\u5bb9'+(note.struck?'\uff08\u5df2\u6807\u8bb0\u5220\u9664\u7ebf\uff09':'');
       div.textContent=note.text||'';
@@ -1575,8 +1577,8 @@ article.page { white-space: normal; }
     const selection=getSelection();
     if(!selection.rangeCount||!article.contains(selection.anchorNode)||!article.contains(selection.focusNode)){add.style.display='none';addWord.style.display='none';strikeButton.style.display='none';return}
     const range=selection.getRangeAt(0);
-    // 光标/选区落在某条修订标记（紫色新增字/删除线/整段插入）内部时，交给点击处理器负责弹出"撤销"相关按钮，
-    // 这里不再显示"添加文字"，避免两个悬浮按钮在同一位置重叠。
+    // 光标/选区落在某条修订标记（紫色新增字/删除线/整段插入）内部时，仍然允许添加共享批注；
+    // 只有管理员的“新增文字”按钮需要隐藏，避免与修订操作按钮重叠。
     const inRevision=Boolean((selection.anchorNode&&(selection.anchorNode.nodeType===Node.TEXT_NODE?selection.anchorNode.parentElement:selection.anchorNode)?.closest?.('[data-revision-id]')));
     if(selection.isCollapsed){
       add.style.display='none';strikeButton.style.display='none';pending=null;
@@ -1596,7 +1598,6 @@ article.page { white-space: normal; }
       return;
     }
     addWord.style.display='none';pendingInsert=null;
-    if(inRevision)return;
     const raw=selection.toString();
     if(!raw.trim()){add.style.display='none';strikeButton.style.display='none';pending=null;return}
     const globalStart=globalOffset(range.startContainer,range.startOffset);
@@ -1667,7 +1668,8 @@ article.page { white-space: normal; }
       end_offset:pendingInsert.offset,
       text:value,
       prefix:pendingInsert.prefix,
-      suffix:pendingInsert.suffix
+      suffix:pendingInsert.suffix,
+      struck:false
     });
     if(result.error){alert('新增失败：'+result.error.message);return}
     revisionDialog.close();pendingInsert=null;getSelection().removeAllRanges();load(true);
@@ -1751,8 +1753,26 @@ article.page { white-space: normal; }
   article.addEventListener('click',event=>{
     const mark=event.target.closest('.annotation-mark');
     if(!mark)return;
-    const id=mark.dataset.noteId,card=list.querySelector('[data-note-id="'+CSS.escape(id)+'"]');
-    if(card){expanded.add(id);card.classList.remove('is-collapsed');requestAnimationFrame(layout)}
+
+    // 一个文字位置可能同时叠加多条批注。paint() 会把重叠批注嵌套起来，
+    // 因此从当前 mark 向上遍历所有 annotation-mark，就能拿到点击位置对应的全部批注。
+    const ids=[];
+    let node=mark;
+    while(node&&node!==article){
+      if(node.classList?.contains('annotation-mark')&&node.dataset.noteId&&!ids.includes(node.dataset.noteId)){
+        ids.push(node.dataset.noteId);
+      }
+      node=node.parentElement;
+    }
+
+    for(const id of ids){
+      const card=list.querySelector('[data-note-id="'+CSS.escape(id)+'"]');
+      if(card){
+        expanded.add(id);
+        card.classList.remove('is-collapsed');
+      }
+    }
+    if(ids.length)requestAnimationFrame(layout);
   });
 
   // 捕获阶段：任何一次新的点击/轻触，先把上一次残留的"撤销此修订"/"删除线切换"按钮收起来
