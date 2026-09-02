@@ -849,6 +849,7 @@ blockquote.quote-large {
   .table-scroll > table.simple-table th:nth-child(5),
   .table-scroll > table.simple-table td:nth-child(5) { width: 8% !important; }
 }
+</style>
 <style id="revision-styles">
 .revision-delete {
   color: #777777;
@@ -912,7 +913,7 @@ article.page { white-space: normal; }
 </div></article><span class="sans" style="font-size:14px;padding-top:2em"></span>
 <button id="annotationAdd" class="annotation-add">＋ 添加批注</button><details class="annotation-panel" open><summary>共享批注 <span id="annotationCount">0</span></summary><div id="annotationList" class="annotation-list"></div></details><dialog id="annotationDialog" class="annotation-dialog"><form id="annotationForm"><h3>添加共享批注</h3><div id="annotationSelection" class="annotation-quote"></div>
 <label>你的昵称（可选）<input id="annotationAuthor" maxlength="30" placeholder="留空则显示为匿名"></label><label>批注颜色<select id="annotationColor"><option value="#ffe58f">黄色</option><option value="#b7eb8f">绿色</option><option value="#91d5ff">蓝色</option><option value="#d3adf7">紫色</option><option value="#ffadd2">粉色</option></select></label>
-<label>批注内容<textarea id="annotationText" maxlength="1000" required></textarea></label><div class="annotation-actions"><button type="button" onclick="this.closest('dialog').close()">取消</button><button class="primary" type="submit">发布批注</button></div></form></dialog><dialog id="revisionDialog" class="annotation-dialog"><form id="revisionForm"><h3>新增文字（修订）</h3><div class="annotation-quote">将在光标处插入新文字，自动显示为紫色，仅管理员可见此功能。</div><label>新增内容<textarea id="revisionText" maxlength="500" required></textarea></label><div class="annotation-actions"><button type="button" onclick="this.closest('dialog').close()">取消</button><button class="primary" type="submit">插入</button></div></form></dialog><dialog id="lineDialog" class="annotation-dialog"><form id="lineForm"><h3>在文末追加内容</h3><label>字号<select id="lineFontSize"><option value="14">小</option><option value="16" selected>正常</option><option value="20">大</option><option value="28">标题</option></select></label><label>内容<textarea id="lineText" maxlength="2000" required></textarea></label><div class="annotation-actions"><button type="button" onclick="this.closest('dialog').close()">取消</button><button class="primary" type="submit">插入</button></div></form></dialog><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
+<label>批注内容<textarea id="annotationText" maxlength="1000" required></textarea></label><div class="annotation-actions"><button type="button" onclick="this.closest('dialog').close()">取消</button><button class="primary" type="submit">发布批注</button></div></form></dialog><dialog id="revisionDialog" class="annotation-dialog"><form id="revisionForm"><h3>新增文字（修订）</h3><div class="annotation-quote">将在光标处插入新文字，自动显示为紫色，仅管理员可见此功能。</div><label>新增内容<textarea id="revisionText" maxlength="500" required></textarea></label><div class="annotation-actions"><button type="button" onclick="this.closest('dialog').close()">取消</button><button class="primary" type="submit">插入</button></div></form></dialog><dialog id="lineDialog" class="annotation-dialog"><form id="lineForm"><h3>插入段落（仅管理员）</h3><label>插入位置<select id="linePosition"><option value="end">文档末尾</option><option value="before" id="linePositionBeforeOpt">所选段落之前</option><option value="after" id="linePositionAfterOpt">所选段落之后</option></select></label><label>字号<select id="lineFontSize"><option value="14">小</option><option value="16" selected>正常</option><option value="20">大</option><option value="28">标题</option></select></label><label>内容<textarea id="lineText" maxlength="2000" required></textarea></label><div class="annotation-actions"><button type="button" onclick="this.closest('dialog').close()">取消</button><button class="primary" type="submit">插入</button></div></form></dialog><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
 (()=>{
   const article=document.querySelector('article');
   const originalHTML=new Map();
@@ -935,7 +936,10 @@ article.page { white-space: normal; }
   const lineForm=document.querySelector('#lineForm');
   const lineText=document.querySelector('#lineText');
   const lineFontSize=document.querySelector('#lineFontSize');
-  let pending=null,pendingInsert=null,pendingRevisionId=null,me=null,isAdmin=false,notes=new Map(),replies=new Map(),revisions=new Map(),expanded=new Set();
+  const linePosition=document.querySelector('#linePosition');
+  const linePositionBeforeOpt=document.querySelector('#linePositionBeforeOpt');
+  const linePositionAfterOpt=document.querySelector('#linePositionAfterOpt');
+  let pending=null,pendingInsert=null,pendingLineBlock=null,pendingRevisionId=null,me=null,isAdmin=false,notes=new Map(),replies=new Map(),revisions=new Map(),expanded=new Set();
   author.value=localStorage.getItem('annotation-author')||'';
 
   const admin=document.createElement('button');
@@ -963,12 +967,12 @@ article.page { white-space: normal; }
   strikeButton.className='annotation-add';
   document.body.append(strikeButton);
 
-  // 固定悬浮的"文末追加"按钮：不依赖光标/选区，随时可点
+  // 固定悬浮的"文末追加"按钮：不依赖光标/选区，随时可点。仅管理员可见。
   const addLine=document.createElement('button');
   addLine.type='button';
-  addLine.textContent='＋ 在文末添加内容';
+  addLine.textContent='＋ 插入段落';
   addLine.className='annotation-add';
-  Object.assign(addLine.style,{position:'fixed',right:'18px',bottom:'18px',left:'auto',top:'auto',display:'block'});
+  Object.assign(addLine.style,{position:'fixed',right:'18px',bottom:'18px',left:'auto',top:'auto',display:'none'});
   document.body.append(addLine);
 
   // 悬浮的"撤销此修订"按钮：点一下修订标记先弹出它，真要撤销再点它一次
@@ -979,8 +983,15 @@ article.page { white-space: normal; }
   Object.assign(undoRevision.style,{background:'#a33'});
   document.body.append(undoRevision);
 
+  // 悬浮的"删除线/取消删除线"按钮：只对整段插入内容（type:'line'）生效，仅管理员可见
+  const strikeLineButton=document.createElement('button');
+  strikeLineButton.type='button';
+  strikeLineButton.className='annotation-add';
+  Object.assign(strikeLineButton.style,{background:'#a33'});
+  document.body.append(strikeLineButton);
+
   const anchorStyle=document.createElement('style');
-  anchorStyle.textContent='.annotation-card.annotation-orphan{border-left-color:#999!important;background:#fafafa}.annotation-card.annotation-orphan .annotation-selected{color:#a34b00}';
+  anchorStyle.textContent='.annotation-card.annotation-orphan{border-left-color:#999!important;background:#fafafa}.annotation-card.annotation-orphan .annotation-selected{color:#a34b00}.revision-line-block.revision-line-struck{color:#808080;text-decoration:line-through;text-decoration-thickness:1px;background:#f1f1f1;border-left-color:#8888}';
   document.head.append(anchorStyle);
 
   function textNodes(root){
@@ -1339,25 +1350,36 @@ article.page { white-space: normal; }
       }catch(error){console.warn('revision(added) anchor failed',note.id,error)}
     }
 
-    // 文末追加内容（type:'line'）：统一渲染进 article 末尾的专属容器，按添加时间排序
+    // 插入的整段内容（type:'line'）：可以挂在文档末尾，也可以挂在某个段落的前面/后面。
+    // 统一先清空旧的 DOM 节点，再按 created_at 顺序重建，随时保留删除线状态（struck）。
+    article.querySelectorAll('.revision-line-block').forEach(node=>node.remove());
     let endContainer=article.querySelector('.revision-end-container');
     if(!endContainer){
       endContainer=document.createElement('div');
       endContainer.className='revision-end-container';
       article.append(endContainer);
+    }else{
+      endContainer.innerHTML='';
     }
-    endContainer.innerHTML='';
     const lines=[...revisions.values()]
       .filter(note=>note.type==='line')
       .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
     for(const note of lines){
       const div=document.createElement('div');
-      div.className='revision-line-block';
+      div.className='revision-line-block'+(note.struck?' revision-line-struck':'');
       div.dataset.revisionId=note.id;
       div.style.fontSize=(note.font_size||16)+'px';
-      div.title=(note.author_name||'\u533f\u540d')+' \u65b0\u589e\u7684\u5185\u5bb9';
+      div.title=(note.author_name||'\u533f\u540d')+' \u65b0\u589e\u7684\u5185\u5bb9'+(note.struck?'\uff08\u5df2\u6807\u8bb0\u5220\u9664\u7ebf\uff09':'');
       div.textContent=note.text||'';
-      endContainer.append(div);
+      const position=note.position||'end';
+      const targetBlock=note.block_id&&note.block_id!=='DOC_END'?article.querySelector('[data-comment-block-id="'+CSS.escape(note.block_id)+'"]'):null;
+      if(targetBlock&&position==='before'){
+        targetBlock.before(div);
+      }else if(targetBlock&&position==='after'){
+        targetBlock.after(div);
+      }else{
+        endContainer.append(div);
+      }
     }
   }
 
@@ -1468,7 +1490,15 @@ article.page { white-space: normal; }
       };
       list.append(card);
     }
-    paintRevisions();paint();layout();updateMigrationButton();
+    paintRevisions();paint();layout();updateMigrationButton();updateAdminButtons();
+  }
+
+  function updateAdminButtons(){
+    // "＋ 插入段落" 仅管理员可见；同步刷新对话框里"所选段落之前/之后"选项是否可用
+    addLine.style.display=isAdmin?'block':'none';
+    const hasTarget=Boolean(isAdmin&&pendingLineBlock);
+    if(linePositionBeforeOpt)linePositionBeforeOpt.disabled=!hasTarget;
+    if(linePositionAfterOpt)linePositionAfterOpt.disabled=!hasTarget;
   }
 
   function isEditing(){
@@ -1543,21 +1573,28 @@ article.page { white-space: normal; }
     const selection=getSelection();
     if(!selection.rangeCount||!article.contains(selection.anchorNode)||!article.contains(selection.focusNode)){add.style.display='none';addWord.style.display='none';strikeButton.style.display='none';return}
     const range=selection.getRangeAt(0);
+    // 光标/选区落在某条修订标记（紫色新增字/删除线/整段插入）内部时，交给点击处理器负责弹出"撤销"相关按钮，
+    // 这里不再显示"添加文字"，避免两个悬浮按钮在同一位置重叠。
+    const inRevision=Boolean((selection.anchorNode&&(selection.anchorNode.nodeType===Node.TEXT_NODE?selection.anchorNode.parentElement:selection.anchorNode)?.closest?.('[data-revision-id]')));
     if(selection.isCollapsed){
       add.style.display='none';strikeButton.style.display='none';pending=null;
-      if(!isAdmin){addWord.style.display='none';pendingInsert=null;return}
+      if(!isAdmin||inRevision){addWord.style.display='none';pendingInsert=null;return}
       const caretBlock=blockFor(range.startContainer);
       if(!caretBlock){addWord.style.display='none';pendingInsert=null;return}
       const caretOffset=offsetWithin(caretBlock,range.startContainer,range.startOffset);
       const caretValue=caretBlock.textContent||'';
       pendingInsert={block_id:caretBlock.dataset.commentBlockId,offset:caretOffset,prefix:caretValue.slice(Math.max(0,caretOffset-30),caretOffset),suffix:caretValue.slice(caretOffset,caretOffset+30)};
+      pendingLineBlock=caretBlock.dataset.commentBlockId;
+      updateAdminButtons();
       const caretBox=range.getBoundingClientRect();
       addWord.style.left=Math.max(8,caretBox.left-10)+'px';
       addWord.style.top=Math.max(8,caretBox.top-40)+'px';
       addWord.style.display='block';
+      undoRevision.style.display='none';strikeLineButton.style.display='none';pendingRevisionId=null;
       return;
     }
     addWord.style.display='none';pendingInsert=null;
+    if(inRevision)return;
     const raw=selection.toString();
     if(!raw.trim()){add.style.display='none';strikeButton.style.display='none';pending=null;return}
     const globalStart=globalOffset(range.startContainer,range.startOffset);
@@ -1598,6 +1635,7 @@ article.page { white-space: normal; }
     }else{
       strikeButton.style.display='none';
     }
+    undoRevision.style.display='none';strikeLineButton.style.display='none';pendingRevisionId=null;
   });
 
   add.onclick=()=>{
@@ -1652,23 +1690,34 @@ article.page { white-space: normal; }
     pending=null;getSelection().removeAllRanges();add.style.display='none';load(true);
   };
 
-  // 固定的"文末追加"按钮：直接弹窗，不依赖光标/选区
+  // 固定的"插入段落"按钮：仅管理员可见，直接弹窗，不依赖光标/选区。
+  // 若最近光标停留在某个段落中，对话框里的"所选段落之前/之后"选项会被启用。
   addLine.onclick=()=>{
+    if(!isAdmin)return;
     lineText.value='';
+    linePosition.value='end';
+    const hasTarget=Boolean(pendingLineBlock);
+    linePositionBeforeOpt.disabled=!hasTarget;
+    linePositionAfterOpt.disabled=!hasTarget;
     lineDialog.showModal();
   };
 
   lineForm.onsubmit=async event=>{
     event.preventDefault();
+    if(!isAdmin)return;
     const value=lineText.value.trim();
     if(!value)return;
     const fontSize=Number(lineFontSize.value);
+    const position=linePosition.value;
+    const useTarget=(position==='before'||position==='after')&&pendingLineBlock;
     const result=await sb.from('revisions').insert({
       article_id:article.id,
       type:'line',
-      block_id:'DOC_END',
+      block_id:useTarget?pendingLineBlock:'DOC_END',
+      position:useTarget?position:'end',
       text:value,
       font_size:fontSize,
+      struck:false,
       author_name:currentAuthor()
     });
     if(result.error){alert('新增失败：'+result.error.message);return}
@@ -1704,37 +1753,59 @@ article.page { white-space: normal; }
     if(card){expanded.add(id);card.classList.remove('is-collapsed');requestAnimationFrame(layout)}
   });
 
-  // 捕获阶段：任何一次新的点击/轻触，先把上一次残留的"撤销此修订"按钮收起来
+  // 捕获阶段：任何一次新的点击/轻触，先把上一次残留的"撤销此修订"/"删除线切换"按钮收起来
   // （捕获阶段比下面 article 上的冒泡监听器先执行，顺序很关键，不能颠倒）
   document.addEventListener('click',event=>{
-    if(event.target===undoRevision)return; // 交给它自己的 onclick 处理，这里不要提前收起
-    undoRevision.style.display='none';pendingRevisionId=null;
+    if(event.target===undoRevision||event.target===strikeLineButton)return; // 交给它们自己的 onclick 处理，这里不要提前收起
+    undoRevision.style.display='none';strikeLineButton.style.display='none';pendingRevisionId=null;
   },true);
 
-  // 冒泡阶段：判断这次点的是不是修订标记（紫色新增字/删除线/文末追加内容），如果是就重新弹出撤销按钮
-  // 管理员可以撤销任何修订；普通用户只能撤销自己新增的"文末追加"内容（type:'line'）
+  // 冒泡阶段：判断这次点的是不是修订标记（紫色新增字/删除线/整段插入内容），如果是就重新弹出撤销/删除线按钮
+  // 管理员可以撤销、切换任何修订的删除线；普通用户只能撤销自己新增的"整段插入"内容（type:'line'）
   article.addEventListener('click',event=>{
     const revisionEl=event.target.closest('[data-revision-id]');
     if(!revisionEl)return;
+    // 命中修订标记时，"添加文字"按钮没有意义，先收起，避免和下面即将显示的按钮重叠
+    addWord.style.display='none';pendingInsert=null;
     const note=revisions.get(revisionEl.dataset.revisionId);
     const canUndo=isAdmin||(note?.type==='line'&&note?.author_id===me);
-    if(!canUndo)return;
+    if(!canUndo){undoRevision.style.display='none';strikeLineButton.style.display='none';pendingRevisionId=null;return}
     // 不调用 confirm()，也不 preventDefault —— 让这次点击照常触发 selectionchange，
     // 定位光标、继续打字这件事完全不受影响
     pendingRevisionId=revisionEl.dataset.revisionId;
     const box=revisionEl.getBoundingClientRect();
+    // "撤销此修订"固定放在标记正上方；如果这条修订是整段插入内容（type:'line'）且当前是管理员，
+    // 再额外显示一个"删除线切换"按钮，放在撤销按钮的右侧，避免两者叠在同一个位置。
     undoRevision.style.left=Math.max(8,box.left)+'px';
     undoRevision.style.top=Math.max(8,box.top-42)+'px';
     undoRevision.style.display='block';
+    if(isAdmin&&note?.type==='line'){
+      strikeLineButton.textContent=note.struck?'取消删除线':'删除线';
+      const undoWidth=undoRevision.offsetWidth||100;
+      strikeLineButton.style.left=Math.max(8,box.left+undoWidth+10)+'px';
+      strikeLineButton.style.top=undoRevision.style.top;
+      strikeLineButton.style.display='block';
+    }else{
+      strikeLineButton.style.display='none';
+    }
   });
 
   undoRevision.onclick=async()=>{
     if(!pendingRevisionId)return;
     const id=pendingRevisionId;
-    undoRevision.style.display='none';pendingRevisionId=null;
+    undoRevision.style.display='none';strikeLineButton.style.display='none';pendingRevisionId=null;
     if(!confirm('撤销这条修订标记吗？'))return;
     const result=await sb.from('revisions').delete().eq('id',id);
     result.error?alert('撤销失败：'+result.error.message):load(true);
+  };
+
+  strikeLineButton.onclick=async()=>{
+    if(!pendingRevisionId||!isAdmin)return;
+    const id=pendingRevisionId,note=revisions.get(id);
+    if(!note||note.type!=='line')return;
+    strikeLineButton.style.display='none';undoRevision.style.display='none';pendingRevisionId=null;
+    const result=await sb.from('revisions').update({struck:!note.struck}).eq('id',id);
+    result.error?alert('操作失败：'+result.error.message):load(true);
   };
 
   admin.onclick=async()=>{
@@ -1774,32 +1845,43 @@ document.querySelectorAll('.page-body > table.simple-table').forEach((table) => 
   content: '💬 ' attr(data-reply-count) ' · ' !important;
 }
 @media (max-width: 720px) {
-  .annotation-panel { pointer-events: none; }
+  article.page { padding-right: 54px !important; }
+  .annotation-panel { pointer-events: none; left: auto !important; right: 0 !important; width: 46px !important; }
+  .annotation-list { width: 46px !important; }
   .annotation-card { pointer-events: auto; }
   .annotation-card.is-collapsed {
-    width: 54px !important;
-    max-width: 54px !important;
-    min-height: 34px;
-    padding: 5px 7px;
-    opacity: .35;
+    width: 40px !important;
+    max-width: 40px !important;
+    min-height: 32px;
+    padding: 5px 4px;
+    opacity: .55;
     border-radius: 999px;
+    box-shadow: 0 1px 4px #0003;
   }
   .annotation-card.is-collapsed .annotation-quote {
-    width: 40px;
-    max-width: 40px;
+    width: 32px;
+    max-width: 32px;
     font-size: 0;
     overflow: visible;
     text-align: center;
   }
   .annotation-card.is-collapsed .annotation-quote::before {
     content: '💬 ' attr(data-reply-count) !important;
-    font-size: 14px;
+    font-size: 13px;
     white-space: nowrap;
   }
   .annotation-card:not(.is-collapsed) {
-    width: min(260px, calc(100vw - 28px));
-    max-width: min(260px, calc(100vw - 28px));
+    position: fixed !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%);
+    width: min(300px, calc(100vw - 32px));
+    max-width: min(300px, calc(100vw - 32px));
+    max-height: 70vh;
+    overflow-y: auto;
     opacity: 1;
+    z-index: 10001;
+    box-shadow: 0 12px 40px #0005;
   }
 }
 </style>
