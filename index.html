@@ -1390,11 +1390,43 @@ article.page { white-space: normal; }
   function layout(){
     const cards=[...list.querySelectorAll('.annotation-card')];
     const anchored=[],orphaned=[];
+    const isMobile=window.matchMedia('(max-width: 720px)').matches;
+
     for(const card of cards){
       const marker=article.querySelector('[data-note-id="'+CSS.escape(card.dataset.noteId)+'"]');
       if(marker)anchored.push({card,marker});else orphaned.push(card);
     }
+
     anchored.sort((a,b)=>a.marker.getBoundingClientRect().top-b.marker.getBoundingClientRect().top);
+
+    // 手机端批注卡片使用 fixed 定位。fixed 的 top 使用视口坐标，
+    // 多条展开批注从顶部依次排列，避免全部堆在屏幕中央。
+    if(isMobile){
+      let bottom=12;
+
+      for(const item of anchored){
+        item.card.classList.remove('annotation-orphan');
+        const top=Math.max(12,bottom);
+        item.card.style.top=top+'px';
+        item.card.style.left='50%';
+        item.card.style.transform='translateX(-50%)';
+        bottom=top+item.card.offsetHeight+10;
+      }
+
+      for(const card of orphaned){
+        card.classList.add('annotation-orphan');
+        const note=notes.get(card.dataset.noteId);
+        const label=card.querySelector('.annotation-selected');
+        if(label)label.textContent='⚠ 原文已修改：'+(note?.quote||'');
+        card.style.top=bottom+'px';
+        card.style.left='50%';
+        card.style.transform='translateX(-50%)';
+        bottom+=card.offsetHeight+10;
+      }
+      return;
+    }
+
+    // 电脑端保持原来的跟随正文锚点布局。
     let bottom=article.getBoundingClientRect().top+scrollY;
     for(const item of anchored){
       item.card.classList.remove('annotation-orphan');
@@ -1402,12 +1434,13 @@ article.page { white-space: normal; }
       item.card.style.top=top+'px';
       bottom=top+item.card.offsetHeight+10;
     }
+
     bottom=Math.max(bottom,article.getBoundingClientRect().bottom+scrollY+12);
     for(const card of orphaned){
       card.classList.add('annotation-orphan');
       const note=notes.get(card.dataset.noteId);
       const label=card.querySelector('.annotation-selected');
-      if(label)label.textContent='\u26a0 \u539f\u6587\u5df2\u4fee\u6539\uff1a'+(note?.quote||'');
+      if(label)label.textContent='⚠ 原文已修改：'+(note?.quote||'');
       card.style.top=bottom+'px';
       bottom+=card.offsetHeight+10;
     }
@@ -1895,11 +1928,11 @@ document.querySelectorAll('.page-body > table.simple-table').forEach((table) => 
   .annotation-card:not(.is-collapsed) {
     position: fixed !important;
     left: 50% !important;
-    top: 50% !important;
-    transform: translate(-50%, -50%);
+    /* top 由 JS 的 layout() 计算，多条批注会依次向下排列 */
+    transform: translateX(-50%);
     width: min(300px, calc(100vw - 32px));
     max-width: min(300px, calc(100vw - 32px));
-    max-height: 70vh;
+    max-height: min(70vh, calc(100vh - 24px));
     overflow-y: auto;
     opacity: 1;
     z-index: 10001;
