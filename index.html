@@ -884,6 +884,7 @@ blockquote.quote-large {
 .revision-legend { margin: 1rem 0 1.5rem; padding: .75rem 1rem; border: 1px solid #ded7ea; border-radius: 8px; background: #fbf9ff; }
 .revision-deleted { color: #808080; text-decoration: line-through; text-decoration-thickness: 1px; }
 .revision-added { color: #7b2cbf; white-space: pre-wrap; }
+.revision-added.revision-struck { color: #808080; text-decoration: line-through; text-decoration-thickness: 1px; }
 /* Preserve revision text colour when a shared-comment highlight is applied. */
 .annotation-mark { color: inherit !important; text-decoration-color: currentColor; }
 .revision-deleted .annotation-mark { color: #808080 !important; }
@@ -1342,9 +1343,9 @@ article.page { white-space: normal; }
         const location=locateInsertion(note);
         if(!location)continue;
         const span=document.createElement('span');
-        span.className='revision-added';
+        span.className='revision-added'+(note.struck?' revision-struck':'');
         span.dataset.revisionId=note.id;
-        span.title='管理员新增文字';
+        span.title='管理员新增文字'+(note.struck?'（已标记删除线）':'');
         span.textContent=note.text||'';
         insertAt(location.root,location.offset,span);
       }catch(error){console.warn('revision(added) anchor failed',note.id,error)}
@@ -1779,7 +1780,7 @@ article.page { white-space: normal; }
     undoRevision.style.left=Math.max(8,box.left)+'px';
     undoRevision.style.top=Math.max(8,box.top-42)+'px';
     undoRevision.style.display='block';
-    if(isAdmin&&note?.type==='line'){
+    if(isAdmin&&(note?.type==='line'||note?.type==='added')){
       strikeLineButton.textContent=note.struck?'取消删除线':'删除线';
       const undoWidth=undoRevision.offsetWidth||100;
       strikeLineButton.style.left=Math.max(8,box.left+undoWidth+10)+'px';
@@ -1802,7 +1803,7 @@ article.page { white-space: normal; }
   strikeLineButton.onclick=async()=>{
     if(!pendingRevisionId||!isAdmin)return;
     const id=pendingRevisionId,note=revisions.get(id);
-    if(!note||note.type!=='line')return;
+    if(!note||(note.type!=='line'&&note.type!=='added'))return;
     strikeLineButton.style.display='none';undoRevision.style.display='none';pendingRevisionId=null;
     const result=await sb.from('revisions').update({struck:!note.struck}).eq('id',id);
     result.error?alert('操作失败：'+result.error.message):load(true);
