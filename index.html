@@ -977,7 +977,7 @@ article.page { white-space: normal; }
   Object.assign(addLine.style,{position:'fixed',right:'18px',bottom:'18px',left:'auto',top:'auto',display:'none'});
   document.body.append(addLine);
 
-  // 悬浮的"撤销此修订"按钮：点一下修订标记先弹出它，真要撤销再点它一次
+  // 悬浮的"撤销此修订"按钮：现在改为长按修订标记才显示，避免手机上一碰就弹出。
   const undoRevision=document.createElement('button');
   undoRevision.type='button';
   undoRevision.id='revisionUndoButton';
@@ -995,7 +995,7 @@ article.page { white-space: normal; }
   document.body.append(strikeLineButton);
 
   const anchorStyle=document.createElement('style');
-  anchorStyle.textContent='.annotation-card.annotation-orphan{border-left-color:#999!important;background:#fafafa}.annotation-card.annotation-orphan .annotation-selected{color:#a34b00}.revision-line-block.revision-line-struck{color:#808080!important;text-decoration:line-through!important;text-decoration-thickness:1px;background:#f1f1f1;border-left-color:#8888}';
+  anchorStyle.textContent='.annotation-card.annotation-orphan{border-left-color:#999!important;background:#fafafa}.annotation-card.annotation-orphan .annotation-selected{color:#a34b00}.revision-line-block.revision-line-struck{color:#808080!important;text-decoration:line-through!important;text-decoration-thickness:1px;background:#f1f1f1;border-left-color:#8888}.revision-longpress-hint{user-select:none;-webkit-user-select:none}';
   document.head.append(anchorStyle);
 
   function textNodes(root){
@@ -1917,41 +1917,55 @@ article.page { white-space: normal; }
     if(ids.length)requestAnimationFrame(layout);
   });
 
-  // 捕获阶段：新的点击先收起旧按钮。
-  // 用 closest() 判断按钮，而不是 event.target===按钮，避免按钮内部节点/移动端点击
-  // 导致 pendingRevisionId 被提前清掉。
+  // 捕获阶段：普通点击只负责收起旧按钮。
+  // 如果点到修订标记本身，不再立即显示按钮；按钮只由下面的“长按”逻辑显示。
   document.addEventListener('click',event=>{
     const buttonTarget=event.target?.closest?.('#revisionUndoButton,#revisionStrikeButton');
     if(buttonTarget)return;
+    const revisionTarget=event.target?.closest?.('[data-revision-id]');
+    if(revisionTarget)return;
     undoRevision.style.display='none';
     strikeLineButton.style.display='none';
     pendingRevisionId=null;
+    undoRevision.dataset.revisionId='';
+    strikeLineButton.dataset.revisionId='';
   },true);
 
-  // 冒泡阶段：判断这次点的是不是修订标记（紫色新增字/删除线/整段插入内容），如果是就重新弹出撤销/删除线按钮
-  // 管理员可以撤销、切换任何修订的删除线；普通用户只能撤销自己新增的"整段插入"内容（type:'line'）
-  article.addEventListener('click',event=>{
-    const revisionEl=event.target.closest('[data-revision-id]');
+  // 修订操作改为“长按”触发：手机/电脑按住约 650ms 才显示“撤销此修订/取消删除线”。
+  // 普通轻触不会弹出任何按钮，也不会影响正常的文字选择。
+  let revisionPressTimer=null;
+  let revisionPressTarget=null;
+  let revisionPressMoved=false;
+
+  function hideRevisionActions(){
+    undoRevision.style.display='none';
+    strikeLineButton.style.display='none';
+    pendingRevisionId=null;
+    undoRevision.dataset.revisionId='';
+    strikeLineButton.dataset.revisionId='';
+  }
+
+  function showRevisionActions(revisionEl){
     if(!revisionEl)return;
-    // 命中修订标记时，"添加文字"按钮没有意义，先收起，避免和下面即将显示的按钮重叠
-    addWord.style.display='none';pendingInsert=null;
-    const note=revisions.get(revisionEl.dataset.revisionId);
-    const canUndo=isAdmin||(note?.type==='line'&&note?.author_id===me);
-    if(!canUndo){undoRevision.style.display='none';strikeLineButton.style.display='none';pendingRevisionId=null;return}
-    // 不调用 confirm()，也不 preventDefault —— 让这次点击照常触发 selectionchange，
-    // 定位光标、继续打字这件事完全不受影响
-    pendingRevisionId=revisionEl.dataset.revisionId;
-    // 把修订 ID 同步存到按钮自身。这样即使手机端在点击按钮前发生 selectionchange，
-    // 也不会因为 pendingRevisionId 被清空而导致“撤销”失效。
-    undoRevision.dataset.revisionId=pendingRevisionId;
+    const id=revisionEl.dataset.revisionId;
+    const note=revisions.get(id);
+    if(!note)return;
+    const canUndo=isAdmin||(note.type==='line'&&note.author_id===me);
+    if(!canUndo){hideRevisionActions();return}
+
+    addWord.style.display='none';
+    pendingInsert=null;
+    pendingRevisionId=id;
+    undoRevision.dataset.revisionId=id;
+    strikeLineButton.dataset.revisionId=id;
+
     const box=revisionEl.getBoundingClientRect();
-    // 删除型修订的“撤销”实际上就是删除这条 deleted 记录；
-    // 新增文字/新增段落则可以继续用下方的“取消删除线”切换 struck。
-    undoRevision.textContent=note?.type==='deleted'?'取消删除线':'撤销此修订';
+    undoRevision.textContent=note.type==='deleted'?'取消删除线':'撤销此修订';
     undoRevision.style.left=Math.max(8,box.left)+'px';
     undoRevision.style.top=Math.max(8,box.top-42)+'px';
     undoRevision.style.display='block';
-    if(isAdmin&&(note?.type==='line'||note?.type==='added')){
+
+    if(isAdmin&&(note.type==='line'||note.type==='added')){
       strikeLineButton.textContent=note.struck?'取消删除线':'删除线';
       const undoWidth=undoRevision.offsetWidth||100;
       strikeLineButton.style.left=Math.max(8,box.left+undoWidth+10)+'px';
@@ -1960,6 +1974,52 @@ article.page { white-space: normal; }
     }else{
       strikeLineButton.style.display='none';
     }
+  }
+
+  article.addEventListener('pointerdown',event=>{
+    const revisionEl=event.target.closest?.('[data-revision-id]');
+    if(!revisionEl)return;
+    clearTimeout(revisionPressTimer);
+    revisionPressTarget=revisionEl;
+    revisionPressMoved=false;
+    const startX=event.clientX,startY=event.clientY;
+    revisionPressTimer=setTimeout(()=>{
+      if(revisionPressTarget===revisionEl&&!revisionPressMoved){
+        showRevisionActions(revisionEl);
+      }
+      revisionPressTimer=null;
+    },650);
+
+    const moveHandler=moveEvent=>{
+      if(Math.abs(moveEvent.clientX-startX)>12||Math.abs(moveEvent.clientY-startY)>12){
+        revisionPressMoved=true;
+        clearTimeout(revisionPressTimer);
+        revisionPressTimer=null;
+        cleanup();
+      }
+    };
+    const endHandler=()=>{
+      clearTimeout(revisionPressTimer);
+      revisionPressTimer=null;
+      revisionPressTarget=null;
+      cleanup();
+    };
+    const cleanup=()=>{
+      window.removeEventListener('pointermove',moveHandler);
+      window.removeEventListener('pointerup',endHandler);
+      window.removeEventListener('pointercancel',endHandler);
+    };
+    window.addEventListener('pointermove',moveHandler,{passive:true});
+    window.addEventListener('pointerup',endHandler,{passive:true});
+    window.addEventListener('pointercancel',endHandler,{passive:true});
+  });
+
+  // 普通点击修订标记不再显示撤销菜单；这里只保留“收起添加文字按钮”的行为。
+  article.addEventListener('click',event=>{
+    const revisionEl=event.target.closest?.('[data-revision-id]');
+    if(!revisionEl)return;
+    addWord.style.display='none';
+    pendingInsert=null;
   });
 
   undoRevision.onclick=async()=>{
@@ -1986,10 +2046,13 @@ article.page { white-space: normal; }
   };
 
   strikeLineButton.onclick=async()=>{
-    if(!pendingRevisionId||!isAdmin)return;
-    const id=pendingRevisionId,note=revisions.get(id);
+    const id=strikeLineButton.dataset.revisionId||pendingRevisionId;
+    if(!id||!isAdmin)return;
+    const note=revisions.get(id);
     if(!note||(note.type!=='line'&&note.type!=='added'))return;
     strikeLineButton.style.display='none';undoRevision.style.display='none';pendingRevisionId=null;
+    strikeLineButton.dataset.revisionId='';
+    undoRevision.dataset.revisionId='';
     const result=await sb.from('revisions').update({struck:!note.struck}).eq('id',id);
     result.error?alert('操作失败：'+result.error.message):load(true);
   };
