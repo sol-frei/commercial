@@ -942,6 +942,9 @@ article.page { white-space: normal; }
   const linePositionBeforeOpt=document.querySelector('#linePositionBeforeOpt');
   const linePositionAfterOpt=document.querySelector('#linePositionAfterOpt');
   let pending=null,pendingInsert=null,pendingLineBlock=null,pendingRevisionId=null,me=null,isAdmin=false,notes=new Map(),replies=new Map(),revisions=new Map(),expanded=new Set();
+  let revisionPressTimer=null;
+  let revisionPressTarget=null;
+  let revisionPressMoved=false;
   author.value=localStorage.getItem('annotation-author')||'';
 
   const admin=document.createElement('button');
@@ -1034,6 +1037,23 @@ article.page { white-space: normal; }
   function blockFor(node){
     const element=node?.nodeType===Node.TEXT_NODE?node.parentElement:node;
     return element?.closest?.('[data-comment-block-id]')||null;
+  }
+
+  function revisionElFromNode(node){
+    const element=node?.nodeType===Node.TEXT_NODE?node.parentElement:node;
+    return element?.closest?.('[data-revision-id]')||null;
+  }
+
+  function revisionElFromRange(range){
+    if(!range)return null;
+    const startEl=revisionElFromNode(range.startContainer);
+    const endEl=revisionElFromNode(range.endContainer);
+    if(startEl&&startEl===endEl)return startEl;
+    return revisionElFromNode(range.commonAncestorContainer);
+  }
+
+  function isStrikethroughNote(note){
+    return Boolean(note&&(note.type==='deleted'||note.struck));
   }
 
   // 用于“添加文字/插入段落”的宿主块。
@@ -1680,11 +1700,25 @@ article.page { white-space: normal; }
         return;
       }
 
-      // 即使光标位于紫色新增文字内部，也允许继续新增文字。
       const caretBlock=editableBlockFor(range.startContainer);
+      const caretRevision=revisionElFromNode(range.startContainer);
+      const caretNote=caretRevision?revisions.get(caretRevision.dataset.revisionId):null;
+      if(isStrikethroughNote(caretNote)){
+        addWord.style.display='none';
+        pendingInsert=null;
+        if(caretBlock){
+          pendingLineBlock=caretBlock.dataset.commentBlockId;
+          updateAdminButtons();
+        }
+        showRevisionActions(caretRevision);
+        return;
+      }
+
+      // 即使光标位于紫色新增文字内部，也允许继续新增文字。
       if(!caretBlock){
         addWord.style.display='none';
         pendingInsert=null;
+        if(!revisionPressTimer&&!revisionPressTarget)hideRevisionActions();
         return;
       }
       const caretOffset=offsetWithin(caretBlock,range.startContainer,range.startOffset);
@@ -1701,9 +1735,7 @@ article.page { white-space: normal; }
       addWord.style.left=Math.max(8,caretBox.left-10)+'px';
       addWord.style.top=Math.max(8,caretBox.top-40)+'px';
       addWord.style.display='block';
-      undoRevision.style.display='none';
-      strikeLineButton.style.display='none';
-      pendingRevisionId=null;
+      if(!revisionPressTimer&&!revisionPressTarget)hideRevisionActions();
       return;
     }
 
@@ -1760,14 +1792,21 @@ article.page { white-space: normal; }
     add.style.left=Math.max(8,box.left+box.width/2-55)+'px';
     add.style.top=Math.max(8,box.top-46)+'px';
     add.style.display='block';
-    if(isAdmin&&pending){
-      strikeButton.style.left=Math.max(8,box.left+box.width/2+65)+'px';
-      strikeButton.style.top=add.style.top;
-      strikeButton.style.display='block';
-    }else{
+    const selectedRevision=revisionElFromRange(range);
+    const selectedNote=selectedRevision?revisions.get(selectedRevision.dataset.revisionId):null;
+    if(isAdmin&&isStrikethroughNote(selectedNote)){
       strikeButton.style.display='none';
+      showRevisionActions(selectedRevision);
+    }else{
+      if(isAdmin&&pending){
+        strikeButton.style.left=Math.max(8,box.left+box.width/2+65)+'px';
+        strikeButton.style.top=add.style.top;
+        strikeButton.style.display='block';
+      }else{
+        strikeButton.style.display='none';
+      }
+      if(!revisionPressTimer&&!revisionPressTarget)hideRevisionActions();
     }
-    undoRevision.style.display='none';strikeLineButton.style.display='none';pendingRevisionId=null;
   });
 
   // 非 contenteditable 的正文无法依靠“放置光标”来记住段落。
@@ -1933,10 +1972,6 @@ article.page { white-space: normal; }
 
   // 修订操作改为“长按”触发：手机/电脑按住约 650ms 才显示“撤销此修订/取消删除线”。
   // 普通轻触不会弹出任何按钮，也不会影响正常的文字选择。
-  let revisionPressTimer=null;
-  let revisionPressTarget=null;
-  let revisionPressMoved=false;
-
   function hideRevisionActions(){
     undoRevision.style.display='none';
     strikeLineButton.style.display='none';
