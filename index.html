@@ -1399,45 +1399,10 @@ article.page { white-space: normal; }
 
     anchored.sort((a,b)=>a.marker.getBoundingClientRect().top-b.marker.getBoundingClientRect().top);
 
-    // 手机端：批注气泡贴在对应句子旁边（就近显示），而不是统一堆在屏幕正中间。
-    // top 沿用文档坐标（与桌面端一致），left 则根据批注标记在屏幕上的水平位置就近摆放，
-    // 并夹紧在视口范围内，避免展开的卡片超出屏幕。
-    if(isMobile){
-      const listBox=list.getBoundingClientRect();
-      const gap=6,edge=8;
-      let bottom=-Infinity;
-
-      for(const item of anchored){
-        item.card.classList.remove('annotation-orphan');
-        const markerBox=item.marker.getBoundingClientRect();
-        const top=Math.max(markerBox.top+scrollY,bottom);
-        item.card.style.top=top+'px';
-        const width=item.card.offsetWidth||54;
-        let left=markerBox.right-listBox.left+gap;
-        left=Math.min(left,innerWidth-edge-listBox.left-width);
-        left=Math.max(left,edge-listBox.left);
-        item.card.style.left=left+'px';
-        item.card.style.transform='none';
-        bottom=top+item.card.offsetHeight+10;
-      }
-
-      for(const card of orphaned){
-        card.classList.add('annotation-orphan');
-        const note=notes.get(card.dataset.noteId);
-        const label=card.querySelector('.annotation-selected');
-        if(label)label.textContent='⚠ 原文已修改：'+(note?.quote||'');
-        const top=Math.max(12,bottom);
-        card.style.top=top+'px';
-        const width=card.offsetWidth||54;
-        card.style.left=Math.max(edge-listBox.left,innerWidth-edge-listBox.left-width)+'px';
-        card.style.transform='none';
-        bottom=top+card.offsetHeight+10;
-      }
-      enableMobileAnnotationScroll();
-      return;
-    }
-
-    // 电脑端保持原来的跟随正文锚点布局。
+    // 批注卡片始终贴靠在页面右侧的批注栏内——这个栏的宽度已经按屏幕宽度做了
+    // 响应式收窄（min(..., 100vw - 间距)），因此不会超出屏幕、也不会挡住内容。
+    // top 则始终跟着对应句子在文档中的位置走，这样卡片仍然"挨着"它标注的那句话，
+    // 而不是简单按顺序堆叠，也不会都挤在屏幕正中间。
     let bottom=article.getBoundingClientRect().top+scrollY;
     for(const item of anchored){
       item.card.classList.remove('annotation-orphan');
@@ -1455,6 +1420,8 @@ article.page { white-space: normal; }
       card.style.top=bottom+'px';
       bottom+=card.offsetHeight+10;
     }
+
+    if(isMobile)enableMobileAnnotationScroll();
   }
 
   // 手机端：批注框内部独立滚动，手指在批注框上滑动时不让正文跟着滚。
