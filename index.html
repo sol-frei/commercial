@@ -1034,6 +1034,30 @@ article.page { white-space: normal; }
     return element?.closest?.('[data-comment-block-id]')||null;
   }
 
+  // 用于“添加文字/插入段落”的宿主块。
+  // 新增文字本身也带 data-comment-block-id，但它仍然属于原来的正文段落；
+  // 如果光标在新增文字里，应该把偏移量算回原正文段落，而不是把新文字当成一个孤立段落。
+  // 整段新增内容（revision-line-block）则保持自身作为独立段落。
+  function editableBlockFor(node){
+    let element=node?.nodeType===Node.TEXT_NODE?node.parentElement:node;
+    if(!element)return null;
+    const line=element.closest?.('.revision-line-block');
+    if(line)return line;
+    while(element&&element!==article){
+      const id=element.dataset?.commentBlockId;
+      if(id&&originalHTML.has(id))return element;
+      element=element.parentElement;
+    }
+    return null;
+  }
+
+  function setLineTargetFromNode(node){
+    const block=editableBlockFor(node);
+    pendingLineBlock=block?.dataset?.commentBlockId||null;
+    updateAdminButtons();
+    return block;
+  }
+
   function commonSuffix(a,b){
     let score=0;
     while(score<a.length&&score<b.length&&a[a.length-1-score]===b[b.length-1-score])score++;
@@ -1312,17 +1336,81 @@ article.page { white-space: normal; }
   }
 
   function paintRevisions(){
+    // 先恢复原始正文，避免上一次渲染留下的修订 DOM 影响本次定位。
     article.querySelectorAll('[data-comment-block-id]').forEach(block=>{
       const id=block.dataset.commentBlockId;
-      if(originalHTML.has(id)&&block.querySelector('[data-revision-id]'))block.innerHTML=originalHTML.get(id);
-    });
-    for(const note of revisions.values()){
-      for(const id of blockIdsFor(note)){
-        const block=article.querySelector('[data-comment-block-id="'+CSS.escape(id)+'"]');
-        if(block&&originalHTML.has(id))block.innerHTML=originalHTML.get(id);
+      if(originalHTML.has(id)&&block.querySelector('[data-revision-id]')){
+        block.innerHTML=originalHTML.get(id);
       }
+    });
+
+    // 先重建“整段新增”，因为后面的局部删除线可能正好落在新增段落里面。
+    article.querySelectorAll('.revision-line-block').forEach(node=>node.remove());
+    let endContainer=article.querySelector('.revision-end-container');
+    if(!endContainer){
+      endContainer=document.createElement('div');
+      endContainer.className='revision-end-container';
+      article.append(endContainer);
+    }else{
+      endContainer.innerHTML='';
     }
-    const deletions=[...revisions.values()].filter(note=>note.type==='deleted').sort((a,b)=>Number(b.start_offset)-Number(a.start_offset));
+
+    const lines=[...revisions.values()]
+      .filter(note=>note.type==='line')
+      .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+    for(const note of lines){
+      try{
+        const div=document.createElement('div');
+        div.className='revision-line-block';
+        if(note.struck)div.classList.add('revision-line-struck');
+        div.dataset.revisionId=note.id;
+        div.dataset.commentBlockId='revision-'+note.id;
+        div.style.fontSize=(note.font_size||16)+'px';
+        div.title=(note.author_name||'匿名')+' 新增的内容'+(note.struck?'（已标记删除线）':'');
+        div.textContent=note.text||'';
+        const position=note.position||'end';
+        const targetBlock=note.block_id&&note.block_id!=='DOC_END'
+          ?article.querySelector('[data-comment-block-id="'+CSS.escape(note.block_id)+'"]')
+          :null;
+        if(targetBlock&&position==='before')targetBlock.before(div);
+        else if(targetBlock&&position==='after')targetBlock.after(div);
+        else endContainer.append(div);
+      }catch(error){console.warn('revision(line) render failed',note.id,error)}
+    }
+
+    // 新增文字可能依赖另一条新增文字（例如在已有紫色文字里面继续添加）。
+    // 因此不能只按 start_offset 排序，而要重复渲染直到所有可定位的新增文字都完成。
+    const insertions=[...revisions.values()]
+      .filter(note=>note.type==='added')
+      .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+    const pendingAdditions=new Set(insertions.map(note=>note.id));
+    let safety=insertions.length+1;
+    while(pendingAdditions.size&&safety-- > 0){
+      let progressed=false;
+      for(const note of insertions){
+        if(!pendingAdditions.has(note.id))continue;
+        try{
+          const location=locateInsertion(note);
+          if(!location)continue;
+          const span=document.createElement('span');
+          span.className='revision-added'+(note.struck?' revision-struck':'');
+          span.dataset.revisionId=note.id;
+          span.dataset.commentBlockId='revision-'+note.id;
+          span.title='管理员新增文字'+(note.struck?'（已标记删除线）':'');
+          span.textContent=note.text||'';
+          insertAt(location.root,location.offset,span);
+          pendingAdditions.delete(note.id);
+          progressed=true;
+        }catch(error){console.warn('revision(added) anchor failed',note.id,error)}
+      }
+      if(!progressed)break;
+    }
+
+    // 最后再画删除线。这样“新增文字/新增段落中的一部分”也能被单独标记删除线，
+    // 不会在随后重建新增节点时被覆盖。
+    const deletions=[...revisions.values()]
+      .filter(note=>note.type==='deleted')
+      .sort((a,b)=>Number(b.start_offset)-Number(a.start_offset));
     for(const note of deletions){
       try{
         const anchor=resolveAnchor(note);
@@ -1334,56 +1422,12 @@ article.page { white-space: normal; }
           span.title='已由管理员标记为废弃';
           return span;
         };
-        if(anchor.parts){for(const part of anchor.parts)wrapRange(part.root,part.start,part.end,makeWrapper)}
-        else wrapRange(anchor.root,anchor.start,anchor.end,makeWrapper);
+        if(anchor.parts){
+          for(const part of anchor.parts)wrapRange(part.root,part.start,part.end,makeWrapper);
+        }else{
+          wrapRange(anchor.root,anchor.start,anchor.end,makeWrapper);
+        }
       }catch(error){console.warn('revision(deleted) anchor failed',note.id,error)}
-    }
-    const insertions=[...revisions.values()].filter(note=>note.type==='added').sort((a,b)=>Number(b.start_offset)-Number(a.start_offset));
-    for(const note of insertions){
-      try{
-        const location=locateInsertion(note);
-        if(!location)continue;
-        const span=document.createElement('span');
-        span.className='revision-added'+(note.struck?' revision-struck':'');
-        span.dataset.revisionId=note.id;
-        span.dataset.commentBlockId='revision-'+note.id;
-        span.title='管理员新增文字'+(note.struck?'（已标记删除线）':'');
-        span.textContent=note.text||'';
-        insertAt(location.root,location.offset,span);
-      }catch(error){console.warn('revision(added) anchor failed',note.id,error)}
-    }
-
-    // 插入的整段内容（type:'line'）：可以挂在文档末尾，也可以挂在某个段落的前面/后面。
-    // 统一先清空旧的 DOM 节点，再按 created_at 顺序重建，随时保留删除线状态（struck）。
-    article.querySelectorAll('.revision-line-block').forEach(node=>node.remove());
-    let endContainer=article.querySelector('.revision-end-container');
-    if(!endContainer){
-      endContainer=document.createElement('div');
-      endContainer.className='revision-end-container';
-      article.append(endContainer);
-    }else{
-      endContainer.innerHTML='';
-    }
-    const lines=[...revisions.values()]
-      .filter(note=>note.type==='line')
-      .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
-    for(const note of lines){
-      const div=document.createElement('div');
-      div.className='revision-line-block'+(note.struck?' revision-line-struck':'');
-      div.dataset.revisionId=note.id;
-      div.dataset.commentBlockId='revision-'+note.id;
-      div.style.fontSize=(note.font_size||16)+'px';
-      div.title=(note.author_name||'\u533f\u540d')+' \u65b0\u589e\u7684\u5185\u5bb9'+(note.struck?'\uff08\u5df2\u6807\u8bb0\u5220\u9664\u7ebf\uff09':'');
-      div.textContent=note.text||'';
-      const position=note.position||'end';
-      const targetBlock=note.block_id&&note.block_id!=='DOC_END'?article.querySelector('[data-comment-block-id="'+CSS.escape(note.block_id)+'"]'):null;
-      if(targetBlock&&position==='before'){
-        targetBlock.before(div);
-      }else if(targetBlock&&position==='after'){
-        targetBlock.after(div);
-      }else{
-        endContainer.append(div);
-      }
     }
   }
 
@@ -1618,31 +1662,58 @@ article.page { white-space: normal; }
 
   document.addEventListener('selectionchange',()=>{
     const selection=getSelection();
-    if(!selection.rangeCount||!article.contains(selection.anchorNode)||!article.contains(selection.focusNode)){add.style.display='none';addWord.style.display='none';strikeButton.style.display='none';return}
+    if(!selection.rangeCount||!article.contains(selection.anchorNode)||!article.contains(selection.focusNode)){
+      add.style.display='none';addWord.style.display='none';strikeButton.style.display='none';
+      return;
+    }
     const range=selection.getRangeAt(0);
-    // 光标/选区落在某条修订标记（紫色新增字/删除线/整段插入）内部时，仍然允许添加共享批注；
-    // 只有管理员的“新增文字”按钮需要隐藏，避免与修订操作按钮重叠。
-    const inRevision=Boolean((selection.anchorNode&&(selection.anchorNode.nodeType===Node.TEXT_NODE?selection.anchorNode.parentElement:selection.anchorNode)?.closest?.('[data-revision-id]')));
+
     if(selection.isCollapsed){
-      add.style.display='none';strikeButton.style.display='none';pending=null;
-      if(!isAdmin||inRevision){addWord.style.display='none';pendingInsert=null;return}
-      const caretBlock=blockFor(range.startContainer);
-      if(!caretBlock){addWord.style.display='none';pendingInsert=null;return}
+      add.style.display='none';
+      strikeButton.style.display='none';
+      pending=null;
+      if(!isAdmin){
+        addWord.style.display='none';
+        pendingInsert=null;
+        return;
+      }
+
+      // 即使光标位于紫色新增文字内部，也允许继续新增文字。
+      const caretBlock=editableBlockFor(range.startContainer);
+      if(!caretBlock){
+        addWord.style.display='none';
+        pendingInsert=null;
+        return;
+      }
       const caretOffset=offsetWithin(caretBlock,range.startContainer,range.startOffset);
       const caretValue=caretBlock.textContent||'';
-      pendingInsert={block_id:caretBlock.dataset.commentBlockId,offset:caretOffset,prefix:caretValue.slice(Math.max(0,caretOffset-30),caretOffset),suffix:caretValue.slice(caretOffset,caretOffset+30)};
+      pendingInsert={
+        block_id:caretBlock.dataset.commentBlockId,
+        offset:caretOffset,
+        prefix:caretValue.slice(Math.max(0,caretOffset-30),caretOffset),
+        suffix:caretValue.slice(caretOffset,caretOffset+30)
+      };
       pendingLineBlock=caretBlock.dataset.commentBlockId;
       updateAdminButtons();
       const caretBox=range.getBoundingClientRect();
       addWord.style.left=Math.max(8,caretBox.left-10)+'px';
       addWord.style.top=Math.max(8,caretBox.top-40)+'px';
       addWord.style.display='block';
-      undoRevision.style.display='none';strikeLineButton.style.display='none';pendingRevisionId=null;
+      undoRevision.style.display='none';
+      strikeLineButton.style.display='none';
+      pendingRevisionId=null;
       return;
     }
-    addWord.style.display='none';pendingInsert=null;
+
+    addWord.style.display='none';
+    pendingInsert=null;
     const raw=selection.toString();
-    if(!raw.trim()){add.style.display='none';strikeButton.style.display='none';pending=null;return}
+    if(!raw.trim()){
+      add.style.display='none';strikeButton.style.display='none';pending=null;return;
+    }
+
+    // 非折叠选区仍使用实际命中的修订节点作为删除线锚点。
+    // 这样在紫色新增文字/新增段落中长按选中“其中一部分”时，删除线只作用于所选部分。
     const globalStart=globalOffset(range.startContainer,range.startOffset);
     const globalEnd=globalOffset(range.endContainer,range.endOffset);
     const startBlock=blockFor(range.startContainer),endBlock=blockFor(range.endContainer);
@@ -1652,7 +1723,13 @@ article.page { white-space: normal; }
       const end=offsetWithin(startBlock,range.endContainer,range.endOffset);
       const value=startBlock.textContent||'';
       const quote=value.slice(start,end);
-      if(quote)pending={anchor_version:2,block_id:startBlock.dataset.commentBlockId,start,end,quote,prefix:value.slice(Math.max(0,start-30),start),suffix:value.slice(end,end+30)};
+      if(quote)pending={
+        anchor_version:2,
+        block_id:startBlock.dataset.commentBlockId,
+        start,end,quote,
+        prefix:value.slice(Math.max(0,start-30),start),
+        suffix:value.slice(end,end+30)
+      };
     }else if(startBlock&&endBlock){
       const blocks=[...article.querySelectorAll('[data-comment-block-id]')];
       const startIndex=blocks.indexOf(startBlock),endIndex=blocks.indexOf(endBlock);
@@ -1667,9 +1744,16 @@ article.page { white-space: normal; }
           return value;
         }).join('');
         const startLength=(startBlock.textContent||'').length-start,endLength=end;
-        if(quote)pending={anchor_version:3,block_id:[startBlock.dataset.commentBlockId,endBlock.dataset.commentBlockId,startLength,endLength].join('|'),start,end,quote,prefix:(startBlock.textContent||'').slice(Math.max(0,start-30),start),suffix:(endBlock.textContent||'').slice(end,end+30)};
+        if(quote)pending={
+          anchor_version:3,
+          block_id:[startBlock.dataset.commentBlockId,endBlock.dataset.commentBlockId,startLength,endLength].join('|'),
+          start,end,quote,
+          prefix:(startBlock.textContent||'').slice(Math.max(0,start-30),start),
+          suffix:(endBlock.textContent||'').slice(end,end+30)
+        };
       }
     }
+
     const box=range.getBoundingClientRect();
     add.style.left=Math.max(8,box.left+box.width/2-55)+'px';
     add.style.top=Math.max(8,box.top-46)+'px';
@@ -1683,6 +1767,19 @@ article.page { white-space: normal; }
     }
     undoRevision.style.display='none';strikeLineButton.style.display='none';pendingRevisionId=null;
   });
+
+  // 非 contenteditable 的正文无法依靠“放置光标”来记住段落。
+  // 管理员直接点击某个正文段落/新增段落时，也把它作为“插入段落”的目标，
+  // 这样就能稳定使用“所选段落之前/之后”。
+  article.addEventListener('click',event=>{
+    if(!isAdmin)return;
+    if(event.target.closest?.('.annotation-mark,.annotation-card,button,dialog'))return;
+    const target=editableBlockFor(event.target);
+    if(target){
+      pendingLineBlock=target.dataset.commentBlockId;
+      updateAdminButtons();
+    }
+  },true);
 
   add.onclick=()=>{
     if(!pending)return;
@@ -1742,8 +1839,8 @@ article.page { white-space: normal; }
   addLine.onclick=()=>{
     if(!isAdmin)return;
     lineText.value='';
-    linePosition.value='end';
-    const hasTarget=Boolean(pendingLineBlock);
+    const hasTarget=Boolean(pendingLineBlock&&article.querySelector('[data-comment-block-id="'+CSS.escape(pendingLineBlock)+'"]'));
+    linePosition.value=hasTarget?'after':'end';
     linePositionBeforeOpt.disabled=!hasTarget;
     linePositionAfterOpt.disabled=!hasTarget;
     lineDialog.showModal();
